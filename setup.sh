@@ -2,14 +2,16 @@
 
 #install oh-my-zsh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-echo "source ~/.dotfiles/.zshrc_personal" >> ~/.zshrc
 
+#symlink zshrc and tmux 
+
+ln -sf ~/.dotfiles/.zshrc ~/.zshrc
+ln -s ~/.dotfiles/.tmux.conf ~/.tmux.conf
 
 #install homebrew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 brew install --cask hyper
-hyper i hyper-snazzy
 
 brew install gh
 
@@ -23,4 +25,3 @@ brew install fig
 cd ~/.dotfiles
 git clone https://github.com/zsh-users/zsh-syntax-highlighting.git
 
-ln -s $PWD/.tmux.conf ~/.tmux.conf
