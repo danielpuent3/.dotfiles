@@ -1,3 +1,0 @@
-alias zshconfig="vim ~/.dotfiles/.zshrc_personal"
-alias aliases="vim ~/.dotfiles/.aliases"
-alias ls="ls -a"

@@ -10,4 +10,6 @@ prompt pure
 source $PWD/.dotfiles/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 #aliases
-source $PWD/.dotfiles/.aliases
+alias zshconfig="vim ~/.dotfiles/.zshrc_personal"
+alias aliases="vim ~/.dotfiles/.aliases"
+alias ls="ls -a"

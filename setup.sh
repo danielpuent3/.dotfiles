@@ -22,3 +22,5 @@ brew install fig
 
 cd ~/.dotfiles
 git clone https://github.com/zsh-users/zsh-syntax-highlighting.git
+
+ln -s $PWD/.tmux.conf ~/.tmux.conf
