@@ -24,6 +24,8 @@ brew install fig
 cd ~/.dotfiles
 git clone https://github.com/zsh-users/zsh-syntax-highlighting.git
 
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+
 hyper i hyper-snazzy
 
 #symlink zshrc and tmux 
