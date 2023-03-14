@@ -20,6 +20,7 @@ autocmd VimEnter * if len(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
 syntax on
 
 set hlsearch
+set background=dark
 set number
 set showmatch
 set incsearch
@@ -49,8 +50,9 @@ Plug 'jlanzarotta/bufexplorer'
 Plug 'itchyny/lightline.vim'
 Plug 'StanAngeloff/php.vim'
 Plug 'arcticicestudio/nord-vim'
-
+Plug 'preservim/nerdcommenter'
 
 call plug#end()
 
 colorscheme nord
+highlight Visual cterm=reverse ctermbg=NONE
