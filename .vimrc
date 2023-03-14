@@ -29,6 +29,7 @@ set wrap
 set ignorecase
 set smartcase
 
+let g:auto_save = 1
 
 " ==== Shortcuts ====
 
