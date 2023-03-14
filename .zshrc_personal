@@ -12,3 +12,4 @@ source ~/.dotfiles/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 #aliases
 alias zshconfig="vim ~/.dotfiles/.zshrc_personal"
 alias ls="ls -a"
+alias gs="git status"
