@@ -34,6 +34,20 @@ set smartcase
 let g:auto_save = 1
 let g:NERDCreateDefaultMappings = 0
 
+let $FZF_DEFAULT_COMMAND = 'find . -name "*" -type f 2>/dev/null
+			\ | grep -v -E "tmp\/|.gitmodules|.git\/|vendor\/|node_modules\/"
+			\ | sed "s|^\./||"'
+let $FZF_DEFAULT_OPTS = '--reverse'
+
+
+let g:fzf_layout = { 'window': { 'width': 1, 'height': 0.6, 'relative': v:true, 'yoffset': 1.0 } }
+let g:fzf_action = {
+			\ 'ctrl-t': 'tab split',
+			\ 'ctrl-i': 'split',
+			\ 'ctrl-v': 'vsplit' }
+
+
+
 " ==== Shortcuts ====
 
 
@@ -42,6 +56,8 @@ map <silent> <LocalLeader>nr :NERDTree<CR>
 map <silent> <LocalLeader>nf :NERDTreeFind<CR>
 
 map <Leader>cc <Plug>NERDCommenterToggle('n', 'Toggle')<CR>
+
+map <silent> <C-p> :Files<CR>
 
 call plug#begin()
 
@@ -55,6 +71,8 @@ Plug 'itchyny/lightline.vim'
 Plug 'StanAngeloff/php.vim'
 Plug 'arcticicestudio/nord-vim'
 Plug 'preservim/nerdcommenter'
+Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
+Plug 'junegunn/fzf.vim'
 
 call plug#end()
 
