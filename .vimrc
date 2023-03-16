@@ -18,6 +18,7 @@ autocmd VimEnter * if len(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
 " ==== Options ====
 
 syntax on
+filetype plugin on
 
 set hlsearch
 set background=dark
@@ -31,6 +32,7 @@ set ignorecase
 set smartcase
 
 let g:auto_save = 1
+let g:NERDCreateDefaultMappings = 0
 
 " ==== Shortcuts ====
 
@@ -38,6 +40,8 @@ let g:auto_save = 1
 map <silent> <LocalLeader>nt :NERDTreeToggle<CR>
 map <silent> <LocalLeader>nr :NERDTree<CR>
 map <silent> <LocalLeader>nf :NERDTreeFind<CR>
+
+map <Leader>cc <Plug>NERDCommenterToggle('n', 'Toggle')<CR>
 
 call plug#begin()
 
