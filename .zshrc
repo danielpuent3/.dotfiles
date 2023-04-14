@@ -109,3 +109,4 @@ export NVM_DIR="$HOME/.nvm"
 
 source ~/.dotfiles/.zshrc_personal
 
+source ~/.zshrc_streamlabs
