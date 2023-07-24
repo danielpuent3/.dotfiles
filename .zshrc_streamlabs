@@ -1,7 +1,7 @@
 ssh-add --apple-use-keychain ~/.ssh/id_rsa
 ssh-add -l
 
-alias aliases='vim ~/.zshrc_streamlabs'
+alias aliases='vim ~/.dotfiles/.zshrc_streamlabs'
 
 # folder paths
 alias basepath="~/Code"
@@ -14,6 +14,7 @@ alias contenthub='sldocker && cd contenthub'
 alias slio='sldocker && cd io.streamlabs.com'
 alias overlays='sldocker && cd overlays.streamlabs.com'
 alias ultra='sldocker && cd streamlabs-identity-api'
+alias kraken='sldocker && cd kraken'
 alias slid=ultra
 
 # git
@@ -40,6 +41,10 @@ alias restart-node-watcher='make restart-node-watcher'
 alias node-watcher='make node-watcher'
 alias migrate='make run-migrations'
 alias composer-install='make composer-install'
+
+function deploy-staging () {
+	./vendor/bin/envoy run deploy --target=staging --branch=${1}
+}
 
 function sail () {
 	./vendor/bin/sail $@
@@ -83,6 +88,14 @@ function sl-loopthrough () {
 				ultra && sail down
 			else
 				ultra && sail up	
+			fi
+		elif [ ${site} = "kraken" ]
+		then
+			if [ ${1} = "stop" ]
+			then
+				sl-stop core && kraken && make stop
+			else
+				sl-start-fast core && kraken && make start
 			fi
 		else
 			sl ${1} ${site}
