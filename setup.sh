@@ -20,6 +20,7 @@ source ~/.zshrc
 brew install tmux
 
 brew install fig
+brew install pure
 
 cd ~/.dotfiles
 git clone https://github.com/zsh-users/zsh-syntax-highlighting.git
