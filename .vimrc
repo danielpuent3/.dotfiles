@@ -61,13 +61,12 @@ map <silent> <C-p> :Files<CR>
 
 call plug#begin()
 
-Plug 'vim-scripts/vim-auto-save'
+Plug '907th/vim-auto-save'
 Plug 'vim-airline/vim-airline'
 Plug 'tomasr/molokai'
-Plug 'terryma/vim-multiple-cursors'
+Plug 'mg979/vim-visual-multi'
 Plug 'preservim/nerdtree'
 Plug 'jlanzarotta/bufexplorer'
-Plug 'itchyny/lightline.vim'
 Plug 'StanAngeloff/php.vim'
 Plug 'arcticicestudio/nord-vim'
 Plug 'preservim/nerdcommenter'

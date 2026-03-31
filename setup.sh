@@ -1,36 +1,58 @@
 #!/bin/bash
 
-#install oh-my-zsh
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+set -e
 
-source ~/.zshrc
+echo "==> Setting up dotfiles..."
 
-#install homebrew
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# install homebrew
+if ! command -v brew &>/dev/null; then
+  echo "==> Installing Homebrew..."
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+else
+  echo "==> Homebrew already installed"
+fi
 
-brew install --cask hyper
+# install oh-my-zsh
+if [ ! -d "$HOME/.oh-my-zsh" ]; then
+  echo "==> Installing oh-my-zsh..."
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+else
+  echo "==> oh-my-zsh already installed"
+fi
 
-brew install gh
+# brew packages
+echo "==> Installing brew packages..."
+brew install --cask hyper 2>/dev/null || true
+brew install gh 2>/dev/null || true
+brew install zsh 2>/dev/null || true
+brew install tmux 2>/dev/null || true
+brew install pure 2>/dev/null || true
+brew install zsh-syntax-highlighting 2>/dev/null || true
 
-brew install zsh
-$(brew --prefix)/bin/zsh
+# install NVM
+if [ ! -d "$HOME/.nvm" ]; then
+  echo "==> Installing NVM..."
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+else
+  echo "==> NVM already installed"
+fi
 
-source ~/.zshrc
+# install TPM (tmux plugin manager)
+if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
+  echo "==> Installing TPM..."
+  git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+else
+  echo "==> TPM already installed"
+fi
 
-brew install tmux
-
-brew install fig
-brew install pure
-
-cd ~/.dotfiles
-git clone https://github.com/zsh-users/zsh-syntax-highlighting.git
-
-git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-
-hyper i hyper-snazzy
-
-#symlink zshrc and tmux 
-
+# symlink dotfiles
+echo "==> Creating symlinks..."
 ln -sf ~/.dotfiles/.zshrc ~/.zshrc
-ln -s ~/.dotfiles/.tmux.conf ~/.tmux.conf
-ln -s ~/.dotfiles/.vimrc ~/.vimrc
+ln -sf ~/.dotfiles/.tmux.conf ~/.tmux.conf
+ln -sf ~/.dotfiles/.vimrc ~/.vimrc
+ln -sf ~/.dotfiles/.hyper.js ~/.hyper.js
+mkdir -p ~/.claude
+ln -sf ~/.dotfiles/claude/CLAUDE.md ~/.claude/CLAUDE.md
+
+echo "==> Done! Restart your terminal or run: source ~/.zshrc"

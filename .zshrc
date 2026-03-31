@@ -1,3 +1,5 @@
+# Kiro CLI pre block. Keep at the top of this file.
+[[ -f "${HOME}/Library/Application Support/kiro-cli/shell/zshrc.pre.zsh" ]] && builtin source "${HOME}/Library/Application Support/kiro-cli/shell/zshrc.pre.zsh"
 # If you come from bash you might have to change your $PATH.
 export PATH=$HOME/bin:/usr/local/bin:/opt/homebrew/bin:$PATH
 export PATH="$PATH:$HOME/.composer/vendor/bin"
@@ -6,8 +8,10 @@ export PATH="$PATH:$HOME/.composer/vendor/bin"
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
-# start tmux by default
+# auto-attach to tmux on terminal open
 ZSH_TMUX_AUTOSTART=true
+ZSH_TMUX_AUTOCONNECT=true
+ZSH_TMUX_AUTOQUIT=false
 
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time oh-my-zsh is loaded, in which case,
@@ -102,13 +106,23 @@ source $ZSH/oh-my-zsh.sh
 # users are encouraged to define aliases within the ZSH_CUSTOM folder.
 # For a full list of active aliases, run `alias`.
 
-alias zshconfig="vim ~/.zshrc"
 alias ohmyzsh="vim ~/.oh-my-zsh"
 
+# lazy-load NVM — only initializes on first use of nvm/node/npm/npx
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+lazy_load_nvm() {
+  unset -f nvm node npm npx
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+}
+nvm() { lazy_load_nvm && nvm "$@"; }
+node() { lazy_load_nvm && node "$@"; }
+npm() { lazy_load_nvm && npm "$@"; }
+npx() { lazy_load_nvm && npx "$@"; }
 
 source ~/.dotfiles/.zshrc_personal
 
 source ~/.dotfiles/.zshrc_streamlabs
+
+# Kiro CLI post block. Keep at the bottom of this file.
+[[ -f "${HOME}/Library/Application Support/kiro-cli/shell/zshrc.post.zsh" ]] && builtin source "${HOME}/Library/Application Support/kiro-cli/shell/zshrc.post.zsh"

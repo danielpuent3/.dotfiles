@@ -1,1 +1,5 @@
 zsh-syntax-highlighting/
+.DS_Store
+.idea/
+*.log
+.claude/
