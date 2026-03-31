@@ -8,10 +8,12 @@ export PATH="$PATH:$HOME/.composer/vendor/bin"
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
-# auto-attach to tmux on terminal open
-ZSH_TMUX_AUTOSTART=true
-ZSH_TMUX_AUTOCONNECT=true
-ZSH_TMUX_AUTOQUIT=false
+# auto-attach to tmux on terminal open (skip in JetBrains terminals)
+if [[ "$TERMINAL_EMULATOR" != "JetBrains-JediTerm" ]]; then
+  ZSH_TMUX_AUTOSTART=true
+  ZSH_TMUX_AUTOCONNECT=true
+  ZSH_TMUX_AUTOQUIT=false
+fi
 
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time oh-my-zsh is loaded, in which case,
