@@ -54,8 +54,11 @@ ln -sf ~/.dotfiles/.zshrc ~/.zshrc
 ln -sf ~/.dotfiles/.tmux.conf ~/.tmux.conf
 ln -sf ~/.dotfiles/.vimrc ~/.vimrc
 ln -sf ~/.dotfiles/.hyper.js ~/.hyper.js
-mkdir -p ~/.claude/skills
+mkdir -p ~/.claude
 ln -sf ~/.dotfiles/claude/CLAUDE.md ~/.claude/CLAUDE.md
-ln -sf ~/.dotfiles/claude/skills/workspaces ~/.claude/skills/workspaces
+ln -sf ~/.dotfiles/claude/settings.local.json ~/.claude/settings.local.json
+ln -sf ~/.dotfiles/claude/statusline-command.sh ~/.claude/statusline-command.sh
+rm -rf ~/.claude/skills
+ln -sf ~/.dotfiles/claude/skills ~/.claude/skills
 
 echo "==> Done! Restart your terminal or run: source ~/.zshrc"
