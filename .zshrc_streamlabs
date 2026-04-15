@@ -7,6 +7,7 @@ alias aliases='vim ~/.dotfiles/.zshrc_streamlabs'
 alias basepath='cd ~/Code'
 
 alias sldocker='basepath && cd streamlabs-docker-environment'
+alias sl-workspace='cd ~/Code/streamlabs-workspaces'
 alias streamlabs='sldocker && cd streamlabs.com'
 alias core=streamlabs
 alias streampress='sldocker && cd streampress'

@@ -29,6 +29,8 @@ brew install zsh 2>/dev/null || true
 brew install tmux 2>/dev/null || true
 brew install pure 2>/dev/null || true
 brew install zsh-syntax-highlighting 2>/dev/null || true
+brew install universal-ctags 2>/dev/null || true
+brew install ripgrep 2>/dev/null || true
 
 # install NVM
 if [ ! -d "$HOME/.nvm" ]; then
@@ -52,7 +54,8 @@ ln -sf ~/.dotfiles/.zshrc ~/.zshrc
 ln -sf ~/.dotfiles/.tmux.conf ~/.tmux.conf
 ln -sf ~/.dotfiles/.vimrc ~/.vimrc
 ln -sf ~/.dotfiles/.hyper.js ~/.hyper.js
-mkdir -p ~/.claude
+mkdir -p ~/.claude/skills
 ln -sf ~/.dotfiles/claude/CLAUDE.md ~/.claude/CLAUDE.md
+ln -sf ~/.dotfiles/claude/skills/workspaces ~/.claude/skills/workspaces
 
 echo "==> Done! Restart your terminal or run: source ~/.zshrc"

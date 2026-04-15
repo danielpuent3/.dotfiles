@@ -4,7 +4,6 @@
 export PATH=$HOME/bin:/usr/local/bin:/opt/homebrew/bin:$PATH
 export PATH="$PATH:$HOME/.composer/vendor/bin"
 
-
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
@@ -128,3 +127,9 @@ source ~/.dotfiles/.zshrc_streamlabs
 
 # Kiro CLI post block. Keep at the bottom of this file.
 [[ -f "${HOME}/Library/Application Support/kiro-cli/shell/zshrc.post.zsh" ]] && builtin source "${HOME}/Library/Application Support/kiro-cli/shell/zshrc.post.zsh"
+
+# sentry
+export PATH="/opt/homebrew/Cellar/sentry/0.22.0/bin:$PATH"
+
+# sentry
+fpath=("/Users/danielpuente/.local/share/zsh/site-functions" $fpath)
