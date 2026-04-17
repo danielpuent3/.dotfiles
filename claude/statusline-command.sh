@@ -1,19 +1,30 @@
 #!/bin/sh
 input=$(cat)
 
-# --- Nord color palette (true-color ANSI) ---
-# Frost
-C_CYAN='\033[38;2;136;192;208m'    # #88C0D0 — branch
-C_BLUE='\033[38;2;129;161;193m'    # #81A1C1 — model name
-C_DEEP='\033[38;2;94;129;172m'     # #5E81AC — bar filled blocks
-# Aurora
-C_GREEN='\033[38;2;163;190;140m'   # #A3BE8C — insertions
-C_RED='\033[38;2;191;97;106m'      # #BF616A — deletions
-C_YELLOW='\033[38;2;235;203;139m'  # #EBCB8B — cost
-# Snow Storm
-C_SNOW='\033[38;2;216;222;233m'    # #D8DEE9 — percentage / labels
-# Polar Night
-C_DIM='\033[38;2;76;86;106m'       # #4C566A — bar empty blocks / separators
+# --- Theme-aware Nord colors ---
+theme=$(cat ~/.dotfiles/.theme 2>/dev/null || echo "dark")
+
+if [ "$theme" = "light" ]; then
+  # Polar Night / darker Frost for readability on light backgrounds
+  C_CYAN='\033[38;2;94;129;172m'      # #5E81AC — branch (nord10)
+  C_BLUE='\033[38;2;76;86;106m'       # #4C566A — model name (nord3)
+  C_DEEP='\033[38;2;94;129;172m'      # #5E81AC — bar filled blocks
+  C_GREEN='\033[38;2;93;122;70m'      # #5D7A46 — insertions (darkened)
+  C_RED='\033[38;2;191;97;106m'       # #BF616A — deletions
+  C_YELLOW='\033[38;2;157;111;0m'     # #9D6F00 — cost (darkened)
+  C_SNOW='\033[38;2;46;52;64m'        # #2E3440 — percentage / labels
+  C_DIM='\033[38;2;216;222;233m'      # #D8DEE9 — bar empty blocks / separators
+else
+  # Snow Storm / Frost for dark backgrounds
+  C_CYAN='\033[38;2;136;192;208m'     # #88C0D0 — branch
+  C_BLUE='\033[38;2;129;161;193m'     # #81A1C1 — model name
+  C_DEEP='\033[38;2;94;129;172m'      # #5E81AC — bar filled blocks
+  C_GREEN='\033[38;2;163;190;140m'    # #A3BE8C — insertions
+  C_RED='\033[38;2;191;97;106m'       # #BF616A — deletions
+  C_YELLOW='\033[38;2;235;203;139m'   # #EBCB8B — cost
+  C_SNOW='\033[38;2;216;222;233m'     # #D8DEE9 — percentage / labels
+  C_DIM='\033[38;2;76;86;106m'        # #4C566A — bar empty blocks / separators
+fi
 C_RESET='\033[0m'
 
 # --- cwd (for git commands) ---
@@ -65,7 +76,7 @@ fi
 # --- separator helper ---
 SEP="${C_DIM}  ${C_RESET}"
 
-# --- assemble with Nord colors ---
+# --- assemble ---
 out=""
 
 # git branch

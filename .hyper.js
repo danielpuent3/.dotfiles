@@ -19,23 +19,38 @@ module.exports = {
         lineHeight: 1,
         // letter spacing as a relative unit
         letterSpacing: 0,
-        // terminal cursor background color and opacity (hex, rgb, hsl, hsv, hwb or cmyk)
-        cursorColor: 'rgba(248,28,229,0.8)',
-        // terminal text color under BLOCK cursor
-        cursorAccentColor: '#000',
+        // <<< THEME_START >>>
+        cursorColor: '#88C0D0',
+        cursorAccentColor: '#2E3440',
+        foregroundColor: '#D8DEE9',
+        backgroundColor: '#2E3440',
+        selectionColor: 'rgba(136, 192, 208, 0.3)',
+        borderColor: '#3B4252',
+        colors: {
+            black: '#3B4252',
+            red: '#BF616A',
+            green: '#A3BE8C',
+            yellow: '#EBCB8B',
+            blue: '#5E81AC',
+            magenta: '#B48EAD',
+            cyan: '#88C0D0',
+            white: '#E5E9F0',
+            lightBlack: '#4C566A',
+            lightRed: '#BF616A',
+            lightGreen: '#A3BE8C',
+            lightYellow: '#EBCB8B',
+            lightBlue: '#81A1C1',
+            lightMagenta: '#B48EAD',
+            lightCyan: '#8FBCBB',
+            lightWhite: '#ECEFF4',
+            limeGreen: '#A3BE8C',
+            lightCoral: '#BF616A',
+        },
+        // <<< THEME_END >>>
         // `'BEAM'` for |, `'UNDERLINE'` for _, `'BLOCK'` for █
         cursorShape: 'BLOCK',
         // set to `true` (without backticks and without quotes) for blinking cursor
         cursorBlink: false,
-        // color of the text
-        foregroundColor: '#fff',
-        // terminal background color
-        // opacity is only supported on macOS
-        backgroundColor: '#000',
-        // terminal selection color
-        selectionColor: 'rgba(248,28,229,0.3)',
-        // border color (window, tabs)
-        borderColor: '#333',
         // custom CSS to embed in the main window
         css: '',
         // custom CSS to embed in the terminal window
@@ -51,47 +66,8 @@ module.exports = {
         showWindowControls: '',
         // custom padding (CSS format, i.e.: `top right bottom left`)
         padding: '12px 14px',
-        // the full list. if you're going to provide the full color palette,
-        // including the 6 x 6 color cubes and the grayscale map, just provide
-        // an array here instead of a color map object
-        colors: {
-            black: '#000000',
-            red: '#C51E14',
-            green: '#1DC121',
-            yellow: '#C7C329',
-            blue: '#0A2FC4',
-            magenta: '#C839C5',
-            cyan: '#20C5C6',
-            white: '#C7C7C7',
-            lightBlack: '#686868',
-            lightRed: '#FD6F6B',
-            lightGreen: '#67F86F',
-            lightYellow: '#FFFA72',
-            lightBlue: '#6A76FB',
-            lightMagenta: '#FD7CFC',
-            lightCyan: '#68FDFE',
-            lightWhite: '#FFFFFF',
-            limeGreen: '#32CD32',
-            lightCoral: '#F08080',
-        },
         // the shell to run when spawning a new session (i.e. /usr/local/bin/fish)
         // if left empty, your system's login shell will be used by default
-        //
-        // Windows
-        // - Make sure to use a full path if the binary name doesn't work
-        // - Remove `--login` in shellArgs
-        //
-        // Windows Subsystem for Linux (WSL) - previously Bash on Windows
-        // - Example: `C:\\Windows\\System32\\wsl.exe`
-        //
-        // Git-bash on Windows
-        // - Example: `C:\\Program Files\\Git\\bin\\bash.exe`
-        //
-        // PowerShell on Windows
-        // - Example: `C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`
-        //
-        // Cygwin
-        // - Example: `C:\\cygwin64\\bin\\bash.exe`
         shell: '',
         // for setting shell arguments (i.e. for using interactive shellArgs: `['-i']`)
         // by default `['--login']` will be used
@@ -102,8 +78,6 @@ module.exports = {
         //  1. 'SOUND' -> Enables the bell as a sound
         //  2. false: turns off the bell
         bell: 'SOUND',
-        // An absolute file path to a sound file on the machine.
-        // bellSoundURL: '/path/to/sound/file',
         // if `true` (without backticks and without quotes), selected text will automatically be copied to the clipboard
         copyOnSelect: false,
         // if `true` (without backticks and without quotes), hyper will be set as the default protocol client for SSH
@@ -131,16 +105,9 @@ module.exports = {
         preserveCWD: true,
         // for advanced config flags please refer to https://hyper.is/#cfg
     },
-    // a list of plugins to fetch and install from npm
-    // format: [@org/]project[#version]
-    // examples:
-    //   `hyperpower`
-    //   `@company/project`
-    //   `project#1.0.1`
-    plugins: ["nord-hyper"],
-    // in development, you can create a directory under
-    // `~/.hyper_plugins/local/` and include it here
-    // to load it and avoid it being `npm install`ed
+    // Theme is managed by ~/.dotfiles/scripts/theme-toggle.sh
+    // Run it directly or use prefix+T in tmux to switch between Nord dark and light
+    plugins: [],
     localPlugins: [],
     keymaps: {
     // Example

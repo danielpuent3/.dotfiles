@@ -95,5 +95,32 @@ let g:gutentags_generate_on_write = 1
 let g:gutentags_generate_on_empty_buffer = 0
 let g:gutentags_ctags_extra_args = ['--tag-relative=yes', '--fields=+ailmnS']
 
-colorscheme nord
-highlight Visual cterm=reverse ctermbg=NONE
+" Dynamic theme — reads ~/.dotfiles/.theme; only reloads when theme changes
+let g:_applied_theme = ''
+function! s:ApplyTheme()
+  let l:file = expand('~/.dotfiles/.theme')
+  let l:t = filereadable(l:file) ? trim(join(readfile(l:file), '')) : 'dark'
+  if l:t ==# g:_applied_theme
+    return
+  endif
+  let g:_applied_theme = l:t
+  if l:t ==# 'light'
+    set background=light
+    colorscheme nord-light
+  else
+    set background=dark
+    colorscheme nord
+  endif
+  highlight Visual cterm=reverse ctermbg=NONE
+endfunction
+
+command! ToggleTheme call s:ToggleTheme()
+function! s:ToggleTheme()
+  let l:file = expand('~/.dotfiles/.theme')
+  let l:cur = filereadable(l:file) ? trim(join(readfile(l:file), '')) : 'dark'
+  call writefile([l:cur ==# 'dark' ? 'light' : 'dark'], l:file)
+  call s:ApplyTheme()
+endfunction
+
+autocmd FocusGained * call s:ApplyTheme()
+call s:ApplyTheme()

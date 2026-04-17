@@ -1,0 +1,15 @@
+# Nord Dark — restores nordtheme/tmux settings + custom status-left with git branch
+# Explicitly resets everything the light theme may have overridden
+
+set -g status-style bg=black,fg=white
+set -g status-justify left
+
+set -g window-status-separator ""
+set -g window-status-format "#[fg=black,bg=brightblack,nobold,noitalics,nounderscore] #[fg=white,bg=brightblack]#I #[fg=white,bg=brightblack,nobold,noitalics,nounderscore] #[fg=white,bg=brightblack]#W #F #[fg=brightblack,bg=black,nobold,noitalics,nounderscore]"
+set -g window-status-current-format "#[fg=black,bg=cyan,nobold,noitalics,nounderscore] #[fg=black,bg=cyan]#I #[fg=black,bg=cyan,nobold,noitalics,nounderscore] #[fg=black,bg=cyan]#W #F #[fg=cyan,bg=black,nobold,noitalics,nounderscore]"
+
+set -g pane-border-style bg=default,fg=brightblack
+set -g pane-active-border-style bg=default,fg=blue
+
+# Custom status-left: session + directory + git branch
+set -g status-left '#[fg=black,bg=blue,bold] #S #[fg=blue,bg=black,nobold,noitalics,nounderscore]#[fg=cyan,bg=black] #(basename #{pane_current_path}) #(cd #{pane_current_path} && b=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) && [ -n "$b" ] && echo "> $b") '
