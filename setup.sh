@@ -40,6 +40,15 @@ else
   echo "==> NVM already installed"
 fi
 
+echo "==> Installing Node.js LTS and Codex CLI..."
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  . "$NVM_DIR/nvm.sh"
+  nvm install --lts
+  nvm use --lts
+fi
+npm install -g @openai/codex
+
 # install TPM (tmux plugin manager)
 if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
   echo "==> Installing TPM..."

@@ -21,6 +21,15 @@ ln -sf "$DOTFILES/claude/skills" ~/.claude/skills
 echo "==> Ensuring scripts are executable..."
 chmod +x "$DOTFILES/scripts/"*.sh
 
+echo "==> Updating Codex CLI..."
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  . "$NVM_DIR/nvm.sh"
+  nvm install --lts
+  nvm use --lts
+fi
+npm install -g @openai/codex
+
 echo "==> Copying vim color schemes..."
 mkdir -p ~/.vim/colors
 cp "$DOTFILES"/vim/colors/*.vim ~/.vim/colors/ 2>/dev/null || true
