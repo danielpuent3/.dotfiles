@@ -136,3 +136,5 @@ export PATH="/opt/homebrew/Cellar/sentry/0.22.0/bin:$PATH"
 
 # sentry
 fpath=("/Users/danielpuente/.local/share/zsh/site-functions" $fpath)
+
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh

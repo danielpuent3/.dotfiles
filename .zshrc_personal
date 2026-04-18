@@ -11,10 +11,33 @@ fi
 autoload -U promptinit; promptinit
 prompt pure
 
-if [ -f /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
-  source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+# zsh completion tuning
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
+
+# zsh + fzf + autosuggestions + syntax-highlighting (order matters)
+HOMEBREW_PREFIX="$(brew --prefix 2>/dev/null || printf '/opt/homebrew')"
+
+if [ -f "$HOME/.fzf.zsh" ]; then
+  source "$HOME/.fzf.zsh"
+fi
+
+if [ -f "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
+  source "$HOMEBREW_PREFIX/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+fi
+
+if [ -f "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]; then
+  source "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 elif [ -f ~/.dotfiles/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
   source ~/.dotfiles/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+fi
+
+# Use Ctrl+Y to accept autosuggestion
+bindkey '^Y' autosuggest-accept
+
+# Prefer fd for fzf sources if available
+if command -v fd >/dev/null 2>&1; then
+  export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
 fi
 
 #aliases

@@ -28,9 +28,18 @@ brew install gh 2>/dev/null || true
 brew install zsh 2>/dev/null || true
 brew install tmux 2>/dev/null || true
 brew install pure 2>/dev/null || true
+brew install fzf 2>/dev/null || true
+brew install zsh-autosuggestions 2>/dev/null || true
 brew install zsh-syntax-highlighting 2>/dev/null || true
 brew install universal-ctags 2>/dev/null || true
 brew install ripgrep 2>/dev/null || true
+brew install fd 2>/dev/null || true
+
+# fzf shell integration (zsh key bindings + completion)
+FZF_PREFIX="$(brew --prefix fzf 2>/dev/null || true)"
+if [ -n "$FZF_PREFIX" ] && [ -x "$FZF_PREFIX/install" ]; then
+  "$FZF_PREFIX/install" --all --no-bash --no-fish || true
+fi
 
 # install NVM
 if [ ! -d "$HOME/.nvm" ]; then
