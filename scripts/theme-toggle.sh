@@ -14,6 +14,10 @@ else
   new="dark"
 fi
 
+# Persist the new state early so editors that read ~/.dotfiles/.theme
+# still switch even if one integration reload fails.
+echo "$new" > "$STATE_FILE"
+
 # === Update Hyper ===
 python3 - "$HYPER_JS" "$new" <<'PYEOF'
 import sys, re
@@ -92,7 +96,8 @@ PYEOF
 
 # === Update tmux (if running) ===
 if [ -n "${TMUX:-}" ]; then
-  tmux source-file "$DOTFILES/tmux/nord-${new}.tmuxtheme"
+  tmux source-file "$DOTFILES/.tmux.conf" || true
+  tmux refresh-client -S || true
 fi
 
 # === Update PhpStorm (takes effect on next launch) ===
@@ -105,7 +110,7 @@ if [ -n "$PHPSTORM_PREFS" ]; then
     THEME_ID="1324eea6-b737-4305-8a73-14af69073eae"
     SCHEME="Nord"
   fi
-  cat > "$PHPSTORM_PREFS/laf.xml" <<EOF
+  if ! cat > "$PHPSTORM_PREFS/laf.xml" <<EOF
 <application>
   <component name="LafManager">
     <laf themeId="${THEME_ID}" />
@@ -115,16 +120,19 @@ if [ -n "$PHPSTORM_PREFS" ]; then
   </component>
 </application>
 EOF
-  cat > "$PHPSTORM_PREFS/colors.scheme.xml" <<EOF
+  then
+    :
+  fi
+  if ! cat > "$PHPSTORM_PREFS/colors.scheme.xml" <<EOF
 <application>
   <component name="EditorColorsManagerImpl">
     <global_color_scheme name="${SCHEME}" />
   </component>
 </application>
 EOF
+  then
+    :
+  fi
 fi
-
-# === Write new state ===
-echo "$new" > "$STATE_FILE"
 
 echo "Switched to Nord ${new}"

@@ -107,9 +107,14 @@ function! s:ApplyTheme()
   if l:t ==# 'light'
     set background=light
     colorscheme nord-light
+    let g:airline_theme = 'papercolor'
   else
     set background=dark
     colorscheme nord
+    let g:airline_theme = 'nord'
+  endif
+  if exists(':AirlineRefresh')
+    AirlineRefresh
   endif
   highlight Visual cterm=reverse ctermbg=NONE
 endfunction

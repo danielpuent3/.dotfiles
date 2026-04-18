@@ -8,10 +8,10 @@ set -g status-left '#[fg=#ECEFF4,bg=#5E81AC,bold] #S #[fg=#5E81AC,bg=#3B4252,nob
 set -g status-right '#[fg=#EBCB8B,bg=#3B4252] #H#[fg=#4C566A]:#[fg=#88C0D0]#S #[fg=#ECEFF4,bg=#5E81AC] %y.%m.%d   %H:%M '
 
 set-window-option -g window-status-style bg=#3B4252,fg=#88C0D0,none
-set-window-option -g window-status-format '#[fg=#4C566A,bg=#3B4252] #I #[fg=#88C0D0,bg=#3B4252] #{?window_zoomed_flag,#[fg=#EBCB8B](,}#W#{?window_zoomed_flag,#[fg=#EBCB8B]),} #{?pane_synchronized,#[fg=brightred](sync) ,}#[default]'
+set-window-option -g window-status-format '#[fg=#3B4252,bg=#4C566A,nobold,noitalics,nounderscore] #[fg=#ECEFF4,bg=#4C566A]#I #[fg=#ECEFF4,bg=#4C566A,nobold,noitalics,nounderscore] #[fg=#ECEFF4,bg=#4C566A]#W #{?window_zoomed_flag,#[fg=#EBCB8B](zoom),}#{?pane_synchronized,#[fg=brightred](sync),} #[fg=#4C566A,bg=#3B4252,nobold,noitalics,nounderscore]'
 
 set-window-option -g window-status-current-style none
-set-window-option -g window-status-current-format '#[fg=#ECEFF4,bg=#5E81AC,bold] #I #[fg=#ECEFF4,bg=#434C5E,bold] #{?window_zoomed_flag,#[fg=#88C0D0](,}#W#{?window_zoomed_flag,#[fg=#88C0D0]),} #{?pane_synchronized,#[fg=brightred](sync) ,}#[default]'
+set-window-option -g window-status-current-format '#[fg=#3B4252,bg=#5E81AC,nobold,noitalics,nounderscore] #[fg=#ECEFF4,bg=#5E81AC,bold]#I #[fg=#ECEFF4,bg=#5E81AC,nobold,noitalics,nounderscore] #[fg=#ECEFF4,bg=#5E81AC,bold]#W #{?window_zoomed_flag,#[fg=#ECEFF4](zoom),}#{?pane_synchronized,#[fg=brightred](sync),} #[fg=#5E81AC,bg=#3B4252,nobold,noitalics,nounderscore]'
 
 set -g pane-border-style bg=default,fg=#D8DEE9
 set -g pane-active-border-style bg=default,fg=#5E81AC

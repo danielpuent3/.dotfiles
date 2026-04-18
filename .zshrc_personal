@@ -1,13 +1,21 @@
 #homebrew
-eval "$(/opt/homebrew/bin/brew shellenv)"
+if [ -x /opt/homebrew/bin/brew ]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+fi
 
 #pure prompt
-fpath+=("/opt/homebrew/share/zsh/site-functions")
+if [ -d /opt/homebrew/share/zsh/site-functions ]; then
+  fpath+=("/opt/homebrew/share/zsh/site-functions")
+fi
 
 autoload -U promptinit; promptinit
 prompt pure
 
-source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+if [ -f /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
+  source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+elif [ -f ~/.dotfiles/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
+  source ~/.dotfiles/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+fi
 
 #aliases
 alias zshconfig="vim ~/.dotfiles/.zshrc_personal"
