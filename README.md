@@ -13,6 +13,7 @@ Personal dotfiles for macOS setup.
 - `RectangleConfig.json` — Rectangle window manager config
 - `AppleScripts/` — Automation scripts for Hyper and PhpStorm
 - `loupedeck/` — Loupedeck device config
+- `claude/` — Claude Code config: `CLAUDE.md`, `statusline-command.sh` (Nord-themed status bar), `skills/`, `settings.local.json`
 
 ## Setup
 

@@ -115,7 +115,7 @@ alias ohmyzsh="vim ~/.oh-my-zsh"
 # lazy-load NVM — only initializes on first use of nvm/node/npm/npx
 export NVM_DIR="$HOME/.nvm"
 lazy_load_nvm() {
-  unset -f nvm node npm npx
+  unset -f nvm node npm npx codex
   [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
   [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 }
@@ -123,6 +123,7 @@ nvm() { lazy_load_nvm && nvm "$@"; }
 node() { lazy_load_nvm && node "$@"; }
 npm() { lazy_load_nvm && npm "$@"; }
 npx() { lazy_load_nvm && npx "$@"; }
+codex() { lazy_load_nvm && codex "$@"; }
 
 source ~/.dotfiles/.zshrc_personal
 
@@ -138,3 +139,4 @@ export PATH="/opt/homebrew/Cellar/sentry/0.22.0/bin:$PATH"
 fpath=("/Users/danielpuente/.local/share/zsh/site-functions" $fpath)
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+export PATH="$HOME/.local/bin:$PATH"

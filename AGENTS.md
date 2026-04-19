@@ -44,6 +44,12 @@ Run these automatically after making related changes:
 - If fzf integration/config changed:
   - `FZF_PREFIX="$(brew --prefix fzf 2>/dev/null || true)"; [ -x "$FZF_PREFIX/install" ] && "$FZF_PREFIX/install" --all --no-bash --no-fish || true`
 
+## Known Gotchas
+
+- **tmux "open terminal failed: not a terminal" after `brew upgrade`** — the old tmux server process stays in memory while the new binary replaces it on disk, causing a client/server mismatch. Fix: `tmux kill-server`, then reopen the terminal. This is not a config issue.
+- **Global npm CLIs (e.g. `codex`) not found** — NVM is lazy-loaded and only initializes on `nvm`, `node`, `npm`, `npx`, or `codex`. If you install a new global npm CLI that needs to be available at the prompt, add a lazy-loader wrapper for it in `.zshrc` alongside the existing ones.
+- **`claude/statusline-command.sh` must be executable** — if the Claude Code status line stops rendering, check that `chmod +x ~/.dotfiles/claude/statusline-command.sh` has been applied.
+
 ## Repository-Specific Guardrails
 
 - Do not edit or move Kiro-managed pre/post blocks in `.zshrc`.
