@@ -36,6 +36,9 @@ These rules apply to every piece of text that will be shown, read, or attributed
 - Short sentences over long ones. One idea per sentence.
 - Use contractions naturally (don't, it's, we're, can't).
 - When in doubt, cut the word. Less is better.
+- Single hedges like "maybe", "I think", "likely", "might" are natural and fine. The hard rule on over-hedging targets compound hedges like "might possibly" or "could maybe", not these.
+- Genuine warmth phrases like "no worries", "no rush", "happy to help", "my bad" are different from AI filler. Keep them; they sound human. Note that "happy to help" is not the same as "I'd be happy to" (which stays banned).
+- Own mistakes plainly: "my bad", "I missed that", "sorry about that". Not corporate framing like "apologies for the confusion" or "I appreciate your patience".
 
 ## Commit Message Rules
 
