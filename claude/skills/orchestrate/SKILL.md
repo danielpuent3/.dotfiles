@@ -70,6 +70,12 @@ it.
   you, not the user, so relay what matters, don't paste it.
 - For parallel file changes that could conflict, give subagents worktree
   isolation.
+- Default model choice: Sonnet for investigation and change subagents, Haiku
+  for cheap mechanical legwork (formatting checks, simple lookups, bulk file
+  scans with an obvious answer). Escalate to an Opus/Fable advisor only for
+  verification or judgment-heavy checks — a cheaper worker does the work, then
+  calls the advisor to check the plan or evaluate the result, rather than
+  running the whole task on the expensive model.
 
 ## Deliverables
 
