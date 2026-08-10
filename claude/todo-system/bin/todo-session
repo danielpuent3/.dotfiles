@@ -1,0 +1,300 @@
+#!/usr/bin/env bash
+#
+# todo-session — bind a Claude Code session to the TODO slug it is working on.
+#
+# Storage: one file per session under ~/.ai/todos/.sessions/
+#   filename = Claude Code session id
+#   contents = todo slug
+#   mtime    = last time the binding was touched
+#
+# One file per session (rather than a single JSON map) keeps writes atomic and
+# lock-free across concurrent sessions, and makes the read path a bare `cat`.
+#
+# Cleanup is not a separate chore: every mutating command prunes dead bindings
+# as a side effect, so the directory cannot grow without bound.
+#
+# Usage:
+#   todo-session set <slug>          bind this session to a todo
+#   todo-session get [--session-id]  print the slug for a session (statusline)
+#   todo-session clear               unbind this session
+#   todo-session list                show every live binding
+#   todo-session prune [--dry-run]   remove dead bindings, verbosely
+#
+# Exit codes:
+#   0  success (for `get`: a binding was found and printed)
+#   1  no binding / generic failure
+#   2  slug does not resolve to a real TODO
+#   3  could not determine the current session id
+
+set -uo pipefail
+
+TODOS_DIR="${TODOS_DIR:-$HOME/.ai/todos}"
+SESSIONS_DIR="$TODOS_DIR/.sessions"
+CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+MAX_AGE_DAYS="${TODO_SESSION_MAX_AGE_DAYS:-30}"
+
+PROG="$(basename "$0")"
+
+die() { printf '%s: %s\n' "$PROG" "$1" >&2; exit "${2:-1}"; }
+
+# ---------------------------------------------------------------------------
+# session identity
+# ---------------------------------------------------------------------------
+# The live process registry is authoritative: it tracks the *current* session
+# id for a pid, which matters because /clear mints a new session id inside the
+# same process while CLAUDE_CODE_SESSION_ID keeps its start-of-process value.
+# Fall back to the env var Claude Code exports into tool shells.
+resolve_session_id() {
+    local id="" reg="$CLAUDE_DIR/sessions/${CLAUDE_PID:-}.json"
+
+    if [ -n "${CLAUDE_PID:-}" ] && [ -f "$reg" ]; then
+        id="$(sed -n 's/.*"sessionId":"\([^"]*\)".*/\1/p' "$reg" 2>/dev/null | head -1)"
+    fi
+    [ -z "$id" ] && id="${CLAUDE_CODE_SESSION_ID:-}"
+
+    printf '%s' "$id"
+}
+
+require_session_id() {
+    local id
+    id="$(resolve_session_id)"
+    [ -n "$id" ] || die "could not determine session id (not running inside Claude Code? pass --session-id)" 3
+    printf '%s' "$id"
+}
+
+# ---------------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------------
+mtime() { stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0; }
+
+short_id() { printf '%s' "${1:0:8}"; }
+
+human_age() {
+    local s="$1"
+    if   [ "$s" -lt 60 ];    then printf '%ds' "$s"
+    elif [ "$s" -lt 3600 ];  then printf '%dm' "$((s / 60))"
+    elif [ "$s" -lt 86400 ]; then printf '%dh' "$((s / 3600))"
+    else                          printf '%dd' "$((s / 86400))"
+    fi
+}
+
+# Accepts a bare slug or a path to a todo folder; prints the resolved folder.
+slug_dir() {
+    local slug="$1"
+    [ -f "$TODOS_DIR/$slug/TODO.md" ]            && { printf '%s' "$TODOS_DIR/$slug"; return 0; }
+    return 1
+}
+
+normalize_slug() {
+    local raw="$1"
+    raw="${raw%/}"          # strip trailing slash
+    raw="${raw%/TODO.md}"   # accept a path to the TODO file itself
+    printf '%s' "${raw##*/}"
+}
+
+# A session is alive if it is in the live process registry, or if its
+# transcript still exists on disk (ended, but resumable).
+session_alive() {
+    local id="$1" f
+    local -i found=0
+
+    if grep -q "\"sessionId\":\"$id\"" "$CLAUDE_DIR"/sessions/*.json 2>/dev/null; then
+        return 0
+    fi
+
+    for f in "$CLAUDE_DIR"/projects/*/"$id".jsonl; do
+        [ -f "$f" ] && found=1 && break
+    done
+    [ "$found" -eq 1 ]
+}
+
+# cwd of a live session, empty if it is not currently running.
+session_cwd() {
+    local id="$1" f
+    for f in "$CLAUDE_DIR"/sessions/*.json; do
+        [ -f "$f" ] || continue
+        if grep -q "\"sessionId\":\"$id\"" "$f" 2>/dev/null; then
+            sed -n 's/.*"cwd":"\([^"]*\)".*/\1/p' "$f" | head -1
+            return 0
+        fi
+    done
+    return 1
+}
+
+# ---------------------------------------------------------------------------
+# prune — the background cleanup that keeps .sessions/ bounded
+# ---------------------------------------------------------------------------
+# Called implicitly (quiet) by every mutating command, or explicitly (verbose).
+# A binding is dead when any of these hold:
+#   1. its slug no longer resolves — the todo was archived, renamed, or deleted
+#   2. its session is gone — no live process and no transcript on disk
+#   3. it is older than MAX_AGE_DAYS, whatever else is true
+prune() {
+    local verbose="${1:-0}" dry="${2:-0}"
+    local f id slug reason now age max_age self_id
+    local -i removed=0
+
+    [ -d "$SESSIONS_DIR" ] || return 0
+    now="$(date +%s)"
+    max_age=$((MAX_AGE_DAYS * 86400))
+    # The calling session is alive by definition, even if it has not landed in
+    # the process registry or flushed a transcript yet. Exempt it from rule 2
+    # so `set` can never reap the binding it just wrote.
+    self_id="$(resolve_session_id)"
+
+    for f in "$SESSIONS_DIR"/*; do
+        [ -f "$f" ] || continue
+        id="$(basename "$f")"
+        slug="$(head -1 "$f" 2>/dev/null)"
+        age=$((now - $(mtime "$f")))
+        reason=""
+
+        if [ -z "$slug" ]; then
+            reason="empty binding"
+        elif ! slug_dir "$slug" >/dev/null; then
+            reason="todo gone (archived/renamed)"
+        elif [ "$id" != "$self_id" ] && ! session_alive "$id"; then
+            reason="session gone"
+        elif [ "$age" -gt "$max_age" ]; then
+            reason="stale (>${MAX_AGE_DAYS}d)"
+        fi
+
+        [ -n "$reason" ] || continue
+
+        if [ "$dry" = "1" ]; then
+            printf 'would prune  %s -> %-45s %s\n' "$(short_id "$id")" "${slug:-<empty>}" "($reason)"
+        else
+            rm -f "$f"
+            [ "$verbose" = "1" ] && \
+                printf 'pruned  %s -> %-45s %s\n' "$(short_id "$id")" "${slug:-<empty>}" "($reason)"
+        fi
+        removed=$((removed + 1))
+    done
+
+    if [ "$verbose" = "1" ] && [ "$removed" -eq 0 ]; then
+        echo "nothing to prune"
+    fi
+    return 0
+}
+
+# ---------------------------------------------------------------------------
+# commands
+# ---------------------------------------------------------------------------
+cmd_set() {
+    local raw="${1:-}" id slug dir tmp
+    [ -n "$raw" ] || die "usage: $PROG set <slug>"
+
+    slug="$(normalize_slug "$raw")"
+    if ! dir="$(slug_dir "$slug")"; then
+        printf '%s: no TODO found for slug "%s"\n' "$PROG" "$slug" >&2
+        printf '  looked in %s/%s/TODO.md\n' "$TODOS_DIR" "$slug" >&2
+        exit 2
+    fi
+
+    id="$(require_session_id)" || exit $?
+    mkdir -p "$SESSIONS_DIR" || die "could not create $SESSIONS_DIR"
+
+    # atomic: write to a sibling temp file, then rename over the target
+    tmp="$SESSIONS_DIR/.tmp.$$"
+    printf '%s\n' "$slug" > "$tmp" || die "could not write binding"
+    mv -f "$tmp" "$SESSIONS_DIR/$id" || die "could not commit binding"
+
+    prune 0
+    printf 'session %s -> %s\n' "$(short_id "$id")" "$slug"
+}
+
+# Pure read: no prune, no directory scans, no dependencies. This is the path
+# the statusline hits on every render, so it stays O(1).
+# The one check it does make is that the slug still resolves, so an archived
+# todo stops displaying immediately rather than lingering until the next prune.
+cmd_get() {
+    local id="" slug
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --session-id) id="${2:-}"; shift 2 ;;
+            --session-id=*) id="${1#*=}"; shift ;;
+            *) die "unknown option for get: $1" ;;
+        esac
+    done
+    [ -n "$id" ] || id="$(resolve_session_id)"
+    [ -n "$id" ] || exit 1
+    case "$id" in */*|..*) exit 1 ;; esac   # a session id is a bare filename
+
+    [ -f "$SESSIONS_DIR/$id" ] || exit 1
+    slug="$(head -1 "$SESSIONS_DIR/$id" 2>/dev/null)"
+    [ -n "$slug" ] || exit 1
+    slug_dir "$slug" >/dev/null || exit 1
+
+    printf '%s\n' "$slug"
+}
+
+cmd_clear() {
+    local id slug
+    id="$(require_session_id)" || exit $?
+
+    if [ -f "$SESSIONS_DIR/$id" ]; then
+        slug="$(head -1 "$SESSIONS_DIR/$id" 2>/dev/null)"
+        rm -f "$SESSIONS_DIR/$id"
+        printf 'session %s unbound (was %s)\n' "$(short_id "$id")" "${slug:-<empty>}"
+    else
+        printf 'session %s had no binding\n' "$(short_id "$id")"
+    fi
+
+    prune 0
+}
+
+cmd_list() {
+    local f id slug cwd age now here mark
+    local -i count=0
+
+    prune 0
+    [ -d "$SESSIONS_DIR" ] || { echo "no bindings"; return 0; }
+
+    now="$(date +%s)"
+    here="$(resolve_session_id)"
+
+    for f in "$SESSIONS_DIR"/*; do
+        [ -f "$f" ] || continue
+        id="$(basename "$f")"
+        slug="$(head -1 "$f" 2>/dev/null)"
+        age="$(human_age $((now - $(mtime "$f"))))"
+        cwd="$(session_cwd "$id" || true)"
+        if [ -n "$cwd" ]; then
+            cwd="~${cwd#$HOME}"
+        else
+            cwd="(not running)"
+        fi
+        mark=" "
+        [ "$id" = "$here" ] && mark="*"
+
+        [ "$count" -eq 0 ] && printf '%s %-8s  %-45s %-6s %s\n' " " "SESSION" "TODO" "AGE" "CWD"
+        printf '%s %-8s  %-45s %-6s %s\n' "$mark" "$(short_id "$id")" "$slug" "$age" "$cwd"
+        count=$((count + 1))
+    done
+
+    [ "$count" -eq 0 ] && echo "no bindings"
+    return 0
+}
+
+usage() {
+    sed -n '4,26p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+# ---------------------------------------------------------------------------
+main() {
+    local cmd="${1:-}"
+    [ $# -gt 0 ] && shift
+
+    case "$cmd" in
+        set)    cmd_set "$@" ;;
+        get)    cmd_get "$@" ;;
+        clear|unset) cmd_clear "$@" ;;
+        list|ls) cmd_list "$@" ;;
+        prune)
+            if [ "${1:-}" = "--dry-run" ]; then prune 1 1; else prune 1 0; fi ;;
+        -h|--help|help|"") usage ;;
+        *) die "unknown command: $cmd (try --help)" ;;
+    esac
+}
+
+main "$@"

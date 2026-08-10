@@ -21,3 +21,7 @@
 ## Orchestration for substantial tasks
 
 - **Substantial tasks (multi-step investigation, analysis, cross-repo work, or multi-file/logic changes): work in orchestration mode by following the `orchestrate` skill at `~/.claude/skills/orchestrate/SKILL.md`.** You plan, scope, reason, and synthesize directly. Delegate all real investigation and code changes to Sonnet subagents, and run independent ones in parallel. Trivial edits (one-liners, typos, tmp/memory writes) you do yourself. Skip this for quick questions and trivial asks.
+
+## Todo system
+
+- **Before assuming there's no tracked context for this session, check `~/.ai/todos/INDEX.md` for a bound todo.** See `~/.ai/todos/README.md` and `SPEC.md` for how the system works. Not every session has one — only check, don't require it.

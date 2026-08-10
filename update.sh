@@ -84,9 +84,35 @@ ln -sf "$DOTFILES/claude/statusline-command.sh" ~/.claude/statusline-command.sh
 rm -rf ~/.claude/skills
 ln -sf "$DOTFILES/claude/skills" ~/.claude/skills
 
+# todo-system: only the tooling travels via dotfiles — ~/.ai/todos itself
+# (the actual queue and TODO items) is machine-local and untracked
+mkdir -p ~/.ai/todos/bin ~/.local/bin
+ln -sf "$DOTFILES/claude/todo-system/README.md" ~/.ai/todos/README.md
+ln -sf "$DOTFILES/claude/todo-system/SPEC.md" ~/.ai/todos/SPEC.md
+ln -sf "$DOTFILES/claude/todo-system/TEMPLATE.md" ~/.ai/todos/TEMPLATE.md
+ln -sf "$DOTFILES/claude/todo-system/bin/todo-session" ~/.ai/todos/bin/todo-session
+ln -sf "$DOTFILES/claude/todo-system/bin/todo-session" ~/.local/bin/todo-session
+if [ ! -f ~/.ai/todos/INDEX.md ]; then
+  cat > ~/.ai/todos/INDEX.md <<'EOF'
+# Queue
+
+## Now
+
+## Next
+
+## Doing
+
+## Waiting
+
+## Blocked
+EOF
+fi
+
 log "Ensuring scripts are executable..."
 chmod +x "$DOTFILES/update.sh"
 chmod +x "$DOTFILES/setup.sh"
+chmod +x "$DOTFILES/claude/todo-system/bin/todo-session"
+chmod +x "$DOTFILES/claude/todo-system/bin/tmux-todo-status.sh"
 if [ -d "$DOTFILES/scripts" ]; then
   find "$DOTFILES/scripts" -type f -name '*.sh' -exec chmod +x {} \;
 fi

@@ -14,6 +14,7 @@ if [ "$theme" = "light" ]; then
   C_YELLOW='\033[38;2;157;111;0m'     # #9D6F00 — cost (darkened)
   C_SNOW='\033[38;2;46;52;64m'        # #2E3440 — percentage / labels
   C_DIM='\033[38;2;216;222;233m'      # #D8DEE9 — bar empty blocks / separators
+  C_PURPLE='\033[38;2;114;96;153m'    # #726099 — todo slug (darkened nord15)
 else
   # Snow Storm / Frost for dark backgrounds
   C_CYAN='\033[38;2;136;192;208m'     # #88C0D0 — branch
@@ -24,8 +25,16 @@ else
   C_YELLOW='\033[38;2;235;203;139m'   # #EBCB8B — cost
   C_SNOW='\033[38;2;216;222;233m'     # #D8DEE9 — percentage / labels
   C_DIM='\033[38;2;76;86;106m'        # #4C566A — bar empty blocks / separators
+  C_PURPLE='\033[38;2;180;142;173m'   # #B48EAD — todo slug (nord15)
 fi
 C_RESET='\033[0m'
+
+# --- bound todo ---
+session_id=$(echo "$input" | jq -r '.session_id // empty')
+todo_slug=""
+if [ -n "$session_id" ]; then
+  todo_slug=$("$HOME/.local/bin/todo-session" get --session-id "$session_id" 2>/dev/null)
+fi
 
 # --- cwd (for git commands) ---
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // "."')
@@ -79,9 +88,19 @@ SEP="${C_DIM}  ${C_RESET}"
 # --- assemble ---
 out=""
 
+# bound todo
+if [ -n "$todo_slug" ]; then
+  out="${C_PURPLE}📝 ${todo_slug}${C_RESET}"
+fi
+
 # git branch
 if [ -n "$branch" ]; then
-  out="${C_CYAN}${branch}${C_RESET}"
+  branch_colored="${C_CYAN}${branch}${C_RESET}"
+  if [ -n "$out" ]; then
+    out="${out}${SEP}${branch_colored}"
+  else
+    out="${branch_colored}"
+  fi
 fi
 
 # diff stats

@@ -14,6 +14,7 @@ Personal dotfiles for macOS setup.
 - `AppleScripts/` — Automation scripts for Hyper and PhpStorm
 - `loupedeck/` — Loupedeck device config
 - `claude/` — Claude Code config: `CLAUDE.md`, `statusline-command.sh` (Nord-themed status bar), `skills/`, `settings.local.json`
+- `claude/todo-system/` — file-based todo system for Claude sessions: `todo-session` binds a session to a work item, `tmux-todo-status.sh` puts a wrong-branch alarm in tmux's status bar. See `claude/todo-system/README.md`. The tooling travels with this repo; the actual queue at `~/.ai/todos/` is machine-local and untracked.
 
 ## Setup
 

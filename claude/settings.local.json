@@ -1,1 +1,11 @@
-{}
+{
+  "permissions": {
+    "allow": [
+      "Bash(tmux show *)",
+      "Bash(tmux -V)",
+      "Bash(/opt/homebrew/bin/tmux -V)",
+      "Bash(/usr/local/bin/tmux -V)",
+      "Bash(command tmux source-file ~/.tmux.conf)"
+    ]
+  }
+}
