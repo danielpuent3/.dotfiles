@@ -62,6 +62,10 @@ fi
 
 # --- model ---
 model=$(echo "$input" | jq -r '.model.display_name // "unknown"')
+context_size=$(echo "$input" | jq -r '.context_window.context_window_size // empty')
+if [ "$context_size" = "1000000" ]; then
+  model="${model} 1M"
+fi
 
 # --- context window bar (10 blocks) ---
 used=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
