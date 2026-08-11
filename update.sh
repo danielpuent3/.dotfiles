@@ -113,6 +113,7 @@ chmod +x "$DOTFILES/update.sh"
 chmod +x "$DOTFILES/setup.sh"
 chmod +x "$DOTFILES/claude/todo-system/bin/todo-session"
 chmod +x "$DOTFILES/claude/todo-system/bin/tmux-todo-status.sh"
+chmod +x "$DOTFILES/claude/hooks/notify.sh"
 if [ -d "$DOTFILES/scripts" ]; then
   find "$DOTFILES/scripts" -type f -name '*.sh' -exec chmod +x {} \;
 fi
@@ -146,6 +147,8 @@ if [ "$SKIP_SYSTEM_UPDATES" != "1" ]; then
       universal-ctags
       ripgrep
       fd
+      jq
+      terminal-notifier
     )
     for pkg in "${REQUIRED_BREW_PACKAGES[@]}"; do
       brew list "$pkg" >/dev/null 2>&1 || brew install "$pkg" || true

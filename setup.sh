@@ -34,6 +34,8 @@ brew install zsh-syntax-highlighting 2>/dev/null || true
 brew install universal-ctags 2>/dev/null || true
 brew install ripgrep 2>/dev/null || true
 brew install fd 2>/dev/null || true
+brew install jq 2>/dev/null || true
+brew install terminal-notifier 2>/dev/null || true
 
 # fzf shell integration (zsh key bindings + completion)
 FZF_PREFIX="$(brew --prefix fzf 2>/dev/null || true)"
@@ -89,6 +91,7 @@ ln -sf ~/.dotfiles/claude/todo-system/bin/todo-session ~/.ai/todos/bin/todo-sess
 ln -sf ~/.dotfiles/claude/todo-system/bin/todo-session ~/.local/bin/todo-session
 chmod +x ~/.dotfiles/claude/todo-system/bin/todo-session
 chmod +x ~/.dotfiles/claude/todo-system/bin/tmux-todo-status.sh
+chmod +x ~/.dotfiles/claude/hooks/notify.sh
 if [ ! -f ~/.ai/todos/INDEX.md ]; then
   cat > ~/.ai/todos/INDEX.md <<'EOF'
 # Queue
