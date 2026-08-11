@@ -8,6 +8,7 @@ set -uo pipefail
 NOTIFIER=/opt/homebrew/bin/terminal-notifier
 TMUX_BIN=/opt/homebrew/bin/tmux
 JQ=/opt/homebrew/bin/jq
+STAMP_DIR="$HOME/.cache/claude-notify"
 
 [[ -x "$NOTIFIER" && -x "$JQ" ]] || exit 0
 
@@ -17,6 +18,30 @@ input=$(cat)
 event=$("$JQ" -r '.hook_event_name // "Stop"' <<<"$input" 2>/dev/null) || exit 0
 session=$("$JQ" -r '.session_id // "unknown"' <<<"$input" 2>/dev/null)
 cwd=$("$JQ" -r '.cwd // ""' <<<"$input" 2>/dev/null)
+
+stamp="$STAMP_DIR/${session//[^A-Za-z0-9_-]/_}.start"
+
+# UserPromptSubmit only marks the turn start. It must print nothing: stdout from
+# that event is injected into Claude's context.
+if [[ "$event" == "UserPromptSubmit" ]]; then
+  mkdir -p "$STAMP_DIR" 2>/dev/null && date +%s >"$stamp" 2>/dev/null
+  find "$STAMP_DIR" -name '*.start' -mtime +7 -delete 2>/dev/null
+  exit 0
+fi
+
+elapsed=""
+if [[ -r "$stamp" ]]; then
+  start=$(<"$stamp")
+  now=$(date +%s)
+  if [[ "$start" =~ ^[0-9]+$ ]] && (( now >= start )); then
+    d=$((now - start))
+    if   (( d < 60 ));   then elapsed="${d}s"
+    elif (( d < 3600 )); then elapsed="$((d / 60))m$((d % 60))s"
+    else                      elapsed="$((d / 3600))h$(printf '%02d' $(((d % 3600) / 60)))m"
+    fi
+  fi
+fi
+[[ "$event" == "Notification" ]] || rm -f "$stamp" 2>/dev/null
 
 window=""
 target=""
@@ -57,6 +82,7 @@ else
   title="Claude $verb${cwd:+ · ${cwd##*/}}"
   subtitle="$cwd"
 fi
+[[ -n "$elapsed" ]] && title="$title ($elapsed)"
 
 click="/usr/bin/open -b co.zeit.hyper"
 [[ -n "${TMUX_PANE:-}" && -x "$TMUX_BIN" ]] &&
