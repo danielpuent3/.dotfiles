@@ -1,0 +1,50 @@
+Simplicity is prerequisite for reliability.|Edsger Dijkstra
+The most dangerous phrase in the language is "we've always done it this way."|Grace Hopper
+Deleted code is debugged code.|Jeff Sickel
+Make it work, make it right, make it fast.|Kent Beck
+Programs must be written for people to read, and only incidentally for machines to execute.|Abelson & Sussman
+Weeks of coding can save you hours of planning.|Anonymous
+The competent programmer is fully aware of the limited size of their own skull.|Edsger Dijkstra
+It is not enough for code to work.|Robert C. Martin
+Controlling complexity is the essence of programming.|Brian Kernighan
+Debugging is twice as hard as writing the code in the first place.|Brian Kernighan
+Perfection is achieved when there is nothing left to take away.|Antoine de Saint-Exupéry
+First, solve the problem. Then, write the code.|John Johnson
+Any fool can write code a computer understands. Good programmers write code humans understand.|Martin Fowler
+Premature optimization is the root of all evil.|Donald Knuth
+The best error message is the one that never shows up.|Thomas Fuchs
+Talk is cheap. Show me the code.|Linus Torvalds
+Testing shows the presence, not the absence of bugs.|Edsger Dijkstra
+A ship in harbor is safe, but that is not what ships are built for.|John A. Shedd
+Slow is smooth, smooth is fast.|Navy SEALs
+The way to get started is to quit talking and begin doing.|Walt Disney
+You can't build a reputation on what you are going to do.|Henry Ford
+Amateurs sit and wait for inspiration. The rest of us just get up and go to work.|Stephen King
+Done is better than perfect.|Sheryl Sandberg
+It always seems impossible until it's done.|Nelson Mandela
+Discipline equals freedom.|Jocko Willink
+The obstacle is the way.|Marcus Aurelius
+Waste no more time arguing what a good man should be. Be one.|Marcus Aurelius
+He who has a why to live can bear almost any how.|Friedrich Nietzsche
+We suffer more in imagination than in reality.|Seneca
+Fall seven times, stand up eight.|Japanese proverb
+The man who moves a mountain begins by carrying away small stones.|Confucius
+Do the hard jobs first. The easy jobs will take care of themselves.|Dale Carnegie
+If you want to go fast, go alone. If you want to go far, go together.|African proverb
+Focus is about saying no.|Steve Jobs
+What gets measured gets managed.|Peter Drucker
+Plans are worthless, but planning is everything.|Dwight D. Eisenhower
+Everything should be made as simple as possible, but not simpler.|Albert Einstein
+The secret of getting ahead is getting started.|Mark Twain
+Nothing is particularly hard if you divide it into small jobs.|Henry Ford
+Quality is not an act, it is a habit.|Aristotle
+Hard choices, easy life. Easy choices, hard life.|Jerzy Gregorek
+Compound interest is the eighth wonder of the world.|Anonymous
+Small daily improvements are the key to staggering long-term results.|Anonymous
+A problem well stated is a problem half solved.|Charles Kettering
+If you can't explain it simply, you don't understand it well enough.|Albert Einstein
+Move slowly and fix things.|Anonymous
+Legacy code is code without tests.|Michael Feathers
+There are two hard things in computer science: cache invalidation, naming things, and off-by-one errors.|Phil Karlton
+Shipping is a feature.|Joel Spolsky
+The cost of adding a feature isn't just the time it takes to code it.|Jeff Atwood
