@@ -69,6 +69,28 @@ if [ -n "$branch" ]; then
   fi
 fi
 
+# --- push state vs upstream (local only, no fetch) ---
+sync_seg=""
+if [ -n "$branch" ]; then
+  counts=$(git -C "$cwd" rev-list --left-right --count '@{upstream}...HEAD' 2>/dev/null)
+  if [ -z "$counts" ]; then
+    sync_seg="${C_YELLOW}⚑${C_RESET}"
+  else
+    read -r behind ahead <<EOF
+$counts
+EOF
+    if [ "$ahead" -gt 0 ] && [ "$behind" -gt 0 ]; then
+      sync_seg="${C_YELLOW}↑${ahead}↓${behind}${C_RESET}"
+    elif [ "$ahead" -gt 0 ]; then
+      sync_seg="${C_YELLOW}↑${ahead}${C_RESET}"
+    elif [ "$behind" -gt 0 ]; then
+      sync_seg="${C_SNOW}↓${behind}${C_RESET}"
+    else
+      sync_seg="${C_GREEN}✓${C_RESET}"
+    fi
+  fi
+fi
+
 # --- session cost ---
 cost_str=""
 if [ -n "$raw_cost" ]; then
@@ -170,7 +192,13 @@ append() {
 }
 
 [ -n "$todo_slug" ] && append "${C_PURPLE}📝 ${todo_slug}${C_RESET}"
-[ -n "$branch" ] && append "${C_CYAN}${branch}${C_RESET}"
+if [ -n "$branch" ]; then
+  if [ -n "$sync_seg" ]; then
+    append "${C_CYAN}${branch}${C_RESET} ${sync_seg}"
+  else
+    append "${C_CYAN}${branch}${C_RESET}"
+  fi
+fi
 append "$pr_seg"
 
 if [ -n "$ins" ] || [ -n "$del" ]; then

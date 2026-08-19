@@ -81,6 +81,10 @@ Apply these checks to each section as you walk through it:
   - Self-check before ending any section: does my response text contain a literal ```diff fence? If not, the section is incomplete. Go back and paste it.
   - A section with no fenced diff is not a section. Never let analysis substitute for the diff.
 
+- **Always end the section with the `AskUserQuestion` prompt.** Every section, including the first one. The failure mode is writing a section that ends with an open observation ("worth raising: ...") which *reads* like an invitation to respond, and stopping there. Prose is not the prompt. The user expects selectable options every time, and without them they have to type out what should have been one click.
+  - Self-check before ending any section, alongside the diff-fence check: did I call `AskUserQuestion`? A section ends with a tool call, not with a paragraph.
+  - The options come from the mode's **Prompt Options** block above (Walkthrough vs Review). Do not improvise a different set.
+
 - **Diff base: use three-dot when the PR base has moved.** `git diff base..head` shows every difference between the two tips, so if the base branch has advanced (or a stacked parent has merged) it renders those upstream commits as phantom deletions in your PR. Use `git diff base...head`, which diffs from the merge base and shows only what this branch actually changed. Verify the file list matches the PR's own "Files changed" count before presenting.
 - **Bundle trivial repeated diffs.** When a rename or comment update sweeps across many files with one-line changes (e.g. updating an old method name in docblocks across 5 files), don't give each file its own turn. Bundle them into one section with one fenced block per file under a single explanation. Save full-turn treatment for hunks that have actual logic worth discussing.
 
