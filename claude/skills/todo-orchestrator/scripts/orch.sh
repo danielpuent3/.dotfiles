@@ -119,7 +119,7 @@ cmd_board() {
   local f slug
   while read -r f; do
     slug="$(basename "$(dirname "$f")")"
-    printf 'TODO|%s|%s|%s|%s|%s|%s|%s|%s\n' \
+    printf 'TODO|%s|%s|%s|%s|%s|%s|%s|%s|%s\n' \
       "$slug" \
       "$(fm "$f" status)" \
       "$(fm "$f" priority)" \
@@ -127,7 +127,8 @@ cmd_board() {
       "$(fm "$f" created)" \
       "$(date -r "$f" +%F)" \
       "$(fmlist "$f" branches)" \
-      "$(fmlist "$f" pr_urls)"
+      "$(fmlist "$f" pr_urls)" \
+      "$(fm "$f" model)"
   done < <(todo_dirs)
 
   # queue / filesystem drift
@@ -202,15 +203,74 @@ cmd_list() {
   while read -r f; do basename "$(dirname "$f")"; done < <(todo_dirs)
 }
 
+# Window naming: <repo-alias>/<hint>, so the repo is always the first thing you
+# read in the status bar and two todos in the same repo never collide.
+repo_alias() {
+  local b; b="$(basename "${1:-}")"
+  case "$b" in
+    streamlabs-identity-api)       echo slid-api ;;
+    streamlabs-identity-web)       echo slid-web ;;
+    streamlabs-identity-laravel)   echo slid-php ;;
+    streamlabs.com)                echo core ;;
+    charity-laravel)               echo charity ;;
+    charity-homestead)             echo charity-hs ;;
+    oracle-invoice-job)            echo oracle ;;
+    oracle-billing)                echo oracle-bl ;;
+    stripe-incident-*)             echo stripe ;;
+    streamlabs-docker-environment) echo env ;;
+    .dotfiles)                     echo dotfiles ;;
+    streamlabs-ledger)             echo ledger ;;
+    streamlabs-r2d2)               echo r2d2 ;;
+    logi-billing-php)              echo logi-bill ;;
+    treasury-paypal)               echo treasury ;;
+    crossclip-api)                 echo crossclip ;;
+    ultra-web)                     echo ultra ;;
+    sl-one-fe-sdk)                 echo sl-one-sdk ;;
+    "")                            echo todo ;;
+    *) printf '%s' "$b" | sed -e 's/^streamlabs-//' -e 's/-laravel$//' -e 's/\.com$//' | cut -c1-10 ;;
+  esac
+}
+
+# First slug token that is not already carried by the alias.
+win_hint() {
+  local slug="$1" alias="$2" tok
+  for tok in ${slug//-/ }; do
+    case "/$alias/" in *"/$tok/"*) continue ;; esac
+    case "$alias" in *"$tok"*) continue ;; esac
+    printf '%s' "$tok" | cut -c1-10
+    return 0
+  done
+  printf '%s' "${slug%%-*}" | cut -c1-10
+}
+
+# Explicit `window:` frontmatter wins; otherwise alias/hint, +N if tmux already
+# has that name on a window bound to a different todo.
+win_name_for() {
+  local slug="$1" dir="$2" f="$3" name alias taken n=2
+  name="$(fm "$f" window)"
+  if [ -z "$name" ]; then
+    alias="$(repo_alias "$dir")"
+    name="$alias/$(win_hint "$slug" "$alias")"
+  fi
+  taken="$("$TMUX_CMD" list-windows -a -F '#{window_name}|#{@todo}' 2>/dev/null | awk -F'|' -v s="$slug" '$2!=s {print $1}')"
+  local base="$name"
+  while printf '%s\n' "$taken" | grep -qxF "$name"; do
+    name="$base$n"; n=$((n+1))
+    [ "$n" -gt 9 ] && break
+  done
+  printf '%s' "$name"
+}
+
 cmd_open() {
-  local slug="" name="" prompt="" switch=0 force=0 dir=""
+  local slug="" name="" prompt="" switch=0 force=0 dir="" model=""
   slug="${1:-}"; shift || true
-  [ -n "$slug" ] || die "usage: orch.sh open <slug> [--name X] [--prompt X] [--switch] [--force] [--dir X]"
+  [ -n "$slug" ] || die "usage: orch.sh open <slug> [--name X] [--prompt X] [--switch] [--force] [--dir X] [--model opus|sonnet|haiku]"
   while [ $# -gt 0 ]; do
     case "$1" in
       --name)   name="$2"; shift 2 ;;
       --prompt) prompt="$2"; shift 2 ;;
       --dir)    dir="$2"; shift 2 ;;
+      --model)  model="$2"; shift 2 ;;
       --switch) switch=1; shift ;;
       --force)  force=1; shift ;;
       *) die "unknown option: $1" ;;
@@ -219,6 +279,12 @@ cmd_open() {
 
   local d; d="$(slug_dir "$slug")" || exit 1
   [ -n "$dir" ] || dir="$(fm "$d/TODO.md" project_directory)"
+  [ -n "$model" ] || model="$(fm "$d/TODO.md" model)"
+  [ -n "$model" ] || model=opus
+  case "$model" in
+    opus|sonnet|haiku) ;;
+    *) die "invalid model: $model (must be opus, sonnet, or haiku)" ;;
+  esac
   [ -d "$dir" ] || die "project_directory does not exist: $dir"
   "$TMUX_CMD" has-session -t 0 2>/dev/null || "$TMUX_CMD" list-sessions >/dev/null 2>&1 || die "no tmux server running"
 
@@ -227,28 +293,116 @@ cmd_open() {
     | awk -F'|' -v s="$slug" '$2==s { print $1 "|" $3 "|" $4; exit }')"
   if [ -n "$existing" ] && [ "$force" -eq 0 ]; then
     [ "$switch" -eq 1 ] && "$TMUX_CMD" select-window -t "${existing%%|*}"
-    echo "EXISTS|$existing|$slug"
+    echo "EXISTS|$existing|$slug|$model"
     return 0
   fi
 
-  [ -n "$name" ] || name="$(printf '%s' "$slug" | cut -c1-14)"
+  [ -n "$name" ] || name="$(win_name_for "$slug" "$dir" "$d/TODO.md")"
 
   local uuid
   uuid="$(uuidgen | tr 'A-Z' 'a-z')"
   mkdir -p "$SESSIONS"
   printf '%s' "$slug" > "$SESSIONS/$uuid"
 
-  [ -n "$prompt" ] || prompt="You are picking up todo \`$slug\`. Run: todo-session set $slug. Then read $d/TODO.md, check git branch and status in $dir against its branches field, and give me a five-line status plus the single next action. Do not change anything until I confirm."
+  [ -n "$prompt" ] || prompt="You are picking up todo \`$slug\`. Run: todo-session set $slug. Then read $d/TODO.md, starting with the \`## Handoff\` section at the end if one exists, since that is where the previous session left off. Check git branch and status in $dir against its branches field, and give me a five-line status plus the single next action. Do not change anything until I confirm."
 
   local winid
   winid="$("$TMUX_CMD" new-window -d -P -F '#{window_id}' -n "$name" -c "$dir")" || die "tmux new-window failed"
   "$TMUX_CMD" set-option -w -t "$winid" @todo "$slug"
-  "$TMUX_CMD" send-keys -t "$winid" "$CLAUDE_BIN --session-id $uuid $(printf '%q' "$prompt")" Enter
+  "$TMUX_CMD" send-keys -t "$winid" "$CLAUDE_BIN --session-id $uuid --model $model $(printf '%q' "$prompt")" Enter
   [ "$switch" -eq 1 ] && "$TMUX_CMD" select-window -t "$winid"
 
   local idx
   idx="$("$TMUX_CMD" display-message -p -t "$winid" '#{window_index}')"
-  echo "OPENED|$winid|$idx|$name|$slug|$dir|$uuid"
+  echo "OPENED|$winid|$idx|$name|$slug|$dir|$uuid|$model"
+}
+
+WINDDOWN_STATE="$TODOS/.winddown"
+
+winddown_prompt() {
+  cat <<TXT
+End of day wind-down for \`$1\`. This window is about to be closed, so bring $TODOS/$1/TODO.md fully up to date first — tomorrow starts from the file, not from your context. Append a dated note covering what you did today and anything you worked out that is not obvious from the diff; correct the status, branches and prs frontmatter; edit Task/Context/Plan in place if they moved; and end with a ## Handoff section giving the exact next action. Call out anything uncommitted, unpushed, or sitting in a worktree, stash or scratch file, with its path. Notes are append-only per SPEC. Reply DONE when the file is written.
+TXT
+}
+
+# Ask every live bound window to write itself up. Unbound and stale windows are
+# reported, not touched — deciding what they were is the orchestrator's job.
+winddown_ask() {
+  local selfwin="" pane win slug rest path mt asked=0
+  selfwin="$("$TMUX_CMD" display -p -t "${TMUX_PANE:-}" '#{window_id}' 2>/dev/null)"
+  : > "$WINDDOWN_STATE"
+
+  local live=" "
+  while IFS='|' read -r pane win slug branch state ctx cost path rest; do
+    [ -n "$pane" ] || continue
+    local winid; winid="$("$TMUX_CMD" display -p -t "$pane" '#{window_id}' 2>/dev/null)"
+    [ "$winid" = "$selfwin" ] && continue
+    if [ -z "$slug" ]; then
+      echo "WINDDOWN|unbound|$winid|$win|$path|$state"
+      continue
+    fi
+    live="$live$slug "
+    mt="$(stat -f %m "$TODOS/$slug/TODO.md" 2>/dev/null || echo 0)"
+    printf '%s\t%s\t%s\n' "$slug" "$mt" "$win" >> "$WINDDOWN_STATE"
+    "$TMUX_CMD" send-keys -t "$winid" -l "$(winddown_prompt "$slug")"
+    "$TMUX_CMD" send-keys -t "$winid" Enter
+    plog "$slug" winddown-asked "$win"
+    echo "WINDDOWN|asked|$slug|$win|$state"
+    asked=$((asked+1))
+  done < <(pulse_scan)
+
+  # bound windows with no claude running: nothing to ask, safe to close
+  "$TMUX_CMD" list-windows -a -F '#{window_id}|#{window_index}|#{window_name}|#{@todo}' 2>/dev/null \
+    | while IFS='|' read -r winid idx win slug; do
+        [ -n "$slug" ] || continue
+        [ "$winid" = "$selfwin" ] && continue
+        case "$live" in *" $slug "*) continue ;; esac
+        echo "WINDDOWN|stale|$winid|$idx|$win|$slug"
+      done
+
+  echo "WINDDOWN|summary|asked=$asked"
+}
+
+winddown_status() {
+  [ -s "$WINDDOWN_STATE" ] || { echo "WINDDOWN|none"; return 0; }
+  local slug mt win now pending=0 upd=0
+  while IFS=$'\t' read -r slug mt win; do
+    [ -n "$slug" ] || continue
+    now="$(stat -f %m "$TODOS/$slug/TODO.md" 2>/dev/null || echo 0)"
+    if [ "$now" != "$mt" ]; then
+      echo "WINDDOWN|updated|$slug|$win"; upd=$((upd+1))
+    else
+      echo "WINDDOWN|pending|$slug|$win"; pending=$((pending+1))
+    fi
+  done < "$WINDDOWN_STATE"
+  echo "WINDDOWN|summary|updated=$upd|pending=$pending"
+}
+
+# Close only what wrote itself up, unless --all is passed.
+winddown_close() {
+  local all=0; [ "${1:-}" = "--all" ] && all=1
+  [ -s "$WINDDOWN_STATE" ] || { echo "WINDDOWN|none"; return 0; }
+  local slug mt win now n=0
+  while IFS=$'\t' read -r slug mt win; do
+    [ -n "$slug" ] || continue
+    now="$(stat -f %m "$TODOS/$slug/TODO.md" 2>/dev/null || echo 0)"
+    if [ "$now" = "$mt" ] && [ "$all" -eq 0 ]; then
+      echo "WINDDOWN|kept|$slug|$win|never updated"
+      continue
+    fi
+    cmd_close "$slug" >/dev/null 2>&1 && { echo "WINDDOWN|closed|$slug|$win"; n=$((n+1)); }
+  done < "$WINDDOWN_STATE"
+  : > "$WINDDOWN_STATE"
+  echo "WINDDOWN|summary|closed=$n"
+}
+
+cmd_winddown() {
+  case "${1:-ask}" in
+    ask)    shift || true; winddown_ask "$@" ;;
+    status) shift || true; winddown_status "$@" ;;
+    close)  shift || true; winddown_close "$@" ;;
+    *) die "usage: orch.sh winddown [ask|status|close [--all]]" ;;
+  esac
 }
 
 cmd_send() {
@@ -330,14 +484,16 @@ cmd_preview() {
   d="$TODOS/$slug"; f="$d/TODO.md"
   [ -f "$f" ] || { echo "no such todo"; return 0; }
 
-  local st pr ty dir br prs win
+  local st pr ty dir br prs win mo
   st="$(fm "$f" status)"; pr="$(fm "$f" priority)"; ty="$(fm "$f" type)"
   dir="$(fm "$f" project_directory)"
   br="$(fmlist "$f" branches)"; prs="$(fmlist "$f" pr_urls)"
   win="$(window_for "$slug")"
+  mo="$(fm "$f" model)"
 
   printf '%s%s%s\n' "$C_BOLD" "$(fm "$f" title)" "$C_RESET"
   printf '%s%s · %s · %s%s\n\n' "$C_DIM" "$st" "$pr" "$ty" "$C_RESET"
+  printf '%smodel%s   %s\n' "$C_CYN" "$C_RESET" "${mo:-opus}"
   printf '%srepo%s    %s\n' "$C_CYN" "$C_RESET" "$(basename "$dir")"
   printf '%sbranch%s  %s\n' "$C_CYN" "$C_RESET" "${br:-none}"
   printf '%spr%s      %s\n' "$C_CYN" "$C_RESET" "$(sed 's|https://github.com/[^/]*/[^/]*/pull/|#|g; s/;/ /g; s/"//g' <<<"${prs:-none}")"
@@ -353,39 +509,42 @@ cmd_preview() {
 
 cmd_pick() {
   [ -x "$FZF_CMD" ] || die "fzf not found"
-  local list sel slug
-  list="$(pick_list)"
-  [ -n "$list" ] || die "no todos"
+  local list sel slug key
+  while :; do
+    list="$(pick_list)"
+    [ -n "$list" ] || die "no todos"
 
-  sel="$(printf '%s\n' "$list" | "$FZF_CMD" \
-    --ansi --delimiter='\t' --with-nth=2 --no-sort \
-    --height=100% --layout=reverse --border=rounded \
-    --border-label=' todo queue ' --border-label-pos=3 \
-    --prompt='  open > ' --pointer='▸' --marker='✓' \
-    --info=inline-right \
-    --preview="$SELF preview {1}" \
-    --preview-window='right,52%,border-left,wrap' \
-    --bind="ctrl-r:reload($SELF _picklist)" \
-    --bind='ctrl-/:toggle-preview' \
-    --header=$'enter open · ctrl-o open+switch · ctrl-x close window · ctrl-r reload\n' \
-    --expect=ctrl-o,ctrl-x)" || return 0
+    sel="$(printf '%s\n' "$list" | "$FZF_CMD" \
+      --ansi --delimiter='\t' --with-nth=2 --no-sort \
+      --height=100% --layout=reverse --border=rounded \
+      --border-label=' todo queue ' --border-label-pos=3 \
+      --prompt='  open > ' --pointer='▸' --marker='✓' \
+      --info=inline-right \
+      --preview="$SELF preview {1}" \
+      --preview-window='right,52%,border-left,wrap' \
+      --bind="ctrl-r:reload($SELF _picklist)" \
+      --bind='ctrl-/:toggle-preview' \
+      --header=$'enter/ctrl-o open+switch · ctrl-t open in background · ctrl-x close window · ctrl-r reload\n' \
+      --expect=ctrl-o,ctrl-t,ctrl-x)" || return 0
 
-  local key; key="$(head -1 <<<"$sel")"
-  slug="$(sed -n '2p' <<<"$sel" | cut -f1)"
-  [ -n "$slug" ] || return 0
+    key="$(head -1 <<<"$sel")"
+    slug="$(sed -n '2p' <<<"$sel" | cut -f1)"
+    [ -n "$slug" ] || return 0
 
-  case "$key" in
-    ctrl-x) cmd_close "$slug" ;;
-    ctrl-o) cmd_open "$slug" --switch ;;
-    *)      cmd_open "$slug" ;;
-  esac
+    case "$key" in
+      ctrl-x) cmd_close "$slug"; continue ;;
+      ctrl-t) cmd_open "$slug" ;;
+      *)      cmd_open "$slug" --switch ;;
+    esac
+    return 0
+  done
 }
 
 cmd_popup() {
   local w="${1:-92%}" h="${2:-86%}"
   "$TMUX_CMD" display-popup -E -w "$w" -h "$h" \
     -T ' todo orchestrator ' \
-    "$SELF pick; printf '\\n  press any key '; read -rsn1" >/dev/null 2>&1 &
+    "if $SELF pick; then :; else printf '\\n  press any key '; read -rsn1; fi" >/dev/null 2>&1 &
   disown 2>/dev/null
   echo "POPUP|opened"
 }
@@ -399,25 +558,46 @@ cmd_popup() {
 
 plog() { printf '%s|%s|%s|%s\n' "$(date +%FT%T)" "$1" "$2" "${3:-}" >> "$PULSE_LOG"; }
 
-pulse_scan() {   # pane|window|slug|branch|state|ctx|cost|path|hash
-  local p tail sline slug branch cost ctx state win
+pulse_scan() {   # pane|window|slug|branch|state|ctx|cost|path|hash|curmodel|recmodel|age|cold
+  local p tail stail sline slug branch cost ctx state win curmodel recmodel age cold
   for p in $("$TMUX_CMD" list-panes -a -F '#{pane_id}' 2>/dev/null); do
     tail="$("$TMUX_CMD" capture-pane -p -t "$p" 2>/dev/null | tail -25)"
-    case "$tail" in *"📝 "*) ;; *) continue ;; esac
-    sline="$(grep -F '📝 ' <<<"$tail" | tail -1)"
-    slug="$(sed -n 's/.*📝 \([^ ][^ ]*\).*/\1/p' <<<"$sline")"
-    [ -n "$slug" ] || continue
-    branch="$(sed 's/.*📝 [^ ][^ ]*  *//; s/  .*//; s/ *[✓✗↑↓*].*//' <<<"$sline")"
+    # the live status line sits near the bottom, but trailing hint/agent lines can
+    # follow it — search a short window, not the whole scrollback tail used for state
+    stail="$(tail -8 <<<"$tail")"
+    sline="$(grep -E '\[[█░]+\] *[0-9]+%' <<<"$stail" | tail -1)"
+    [ -n "$sline" ] || continue
+    if grep -qF '📝 ' <<<"$sline"; then
+      slug="$(sed -n 's/.*📝 \([^ ][^ ]*\).*/\1/p' <<<"$sline")"
+      branch="$(sed 's/.*📝 [^ ][^ ]*  *//; s/  .*//; s/ *[✓✗↑↓*].*//' <<<"$sline")"
+    else
+      slug=""
+      branch="$(sed 's/^ *//; s/  .*//; s/ *[✓✗↑↓*].*//' <<<"$sline")"
+    fi
     cost="$(grep -o '\$[0-9][0-9.,]*' <<<"$sline" | head -1)"
     ctx="$(grep -o '[0-9][0-9]*%' <<<"$sline" | tail -1)"
     if grep -q 'esc to interrupt' <<<"$tail"; then state=working
     elif grep -qE 'Do you want|Would you like|Proceed\?|\(y/n\)|^ *❯ *[0-9]\.|^ *[0-9]\. Yes|Press enter to' <<<"$tail"; then state=input
     else state=idle; fi
     win="$("$TMUX_CMD" display -p -t "$p" '#{window_name}' 2>/dev/null)"
-    printf '%s|%s|%s|%s|%s|%s|%s|%s|%s\n' \
+    if grep -qi haiku <<<"$sline"; then curmodel=haiku
+    elif grep -qi sonnet <<<"$sline"; then curmodel=sonnet
+    elif grep -qi opus <<<"$sline"; then curmodel=opus
+    else curmodel=unknown; fi
+    if [ -n "$slug" ]; then
+      recmodel="$(fm "$TODOS/$slug/TODO.md" model)"
+      [ -n "$recmodel" ] || recmodel=opus
+    else
+      recmodel=""
+    fi
+    # session age and cold-cache resume cost come straight off the status line,
+    # so pulse and the status line can never disagree.
+    age="$(sed -n 's/.*⏱ \([0-9hm][0-9hm]*\).*/\1/p' <<<"$sline")"
+    cold="$(sed -n 's/.*❄ [0-9hm][0-9hm]* ~\(\$[0-9.][0-9.]*\).*/\1/p' <<<"$sline")"
+    printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s\n' \
       "$p" "$win" "$slug" "$branch" "$state" "${ctx:-–}" "${cost:-–}" \
       "$("$TMUX_CMD" display -p -t "$p" '#{pane_current_path}' 2>/dev/null)" \
-      "$(cksum <<<"$tail" | cut -d' ' -f1)"
+      "$(cksum <<<"$tail" | cut -d' ' -f1)" "$curmodel" "$recmodel" "${age:-–}" "${cold:-}"
   done
 }
 
@@ -432,7 +612,7 @@ ago() {   # seconds -> compact age
 cmd_watch() {
   [ "${BASH_VERSINFO[0]}" -ge 4 ] || exec /opt/homebrew/bin/bash "$SELF" watch
   local tick="${1:-5}" gitevery=4 n=0
-  declare -A st since head_of br_of mt_of seen
+  declare -A st since head_of br_of mt_of seen modeldrift_of agedflag_of label_of
   local now cols
 
   printf '\033[?25l'
@@ -440,42 +620,64 @@ cmd_watch() {
 
   while :; do
     now="$(date +%s)"
-    cols="$(tput cols 2>/dev/null || echo 80)"
-    local rows="" live=" "
+    cols="$("$TMUX_CMD" display -p -t "${TMUX_PANE:-}" '#{pane_width}' 2>/dev/null)"
+    [ -n "$cols" ] || cols="$(tput cols 2>/dev/null || echo 80)"
+    local rows_bound="" rows_unbound="" rows="" live=" "
+    local -a map_pane_b=() map_win_b=() map_slug_b=()
+    local -a map_pane_u=() map_win_u=() map_slug_u=()
+    local target=$((cols * 80 / 100)) avail win_w=9 slug_w
+    avail=$((target - 59))
+    slug_w=$((avail - win_w))
+    [ "$slug_w" -lt 20 ] && slug_w=20
+    [ "$slug_w" -gt 60 ] && slug_w=60
+    win_w=$((avail - slug_w))
+    [ "$win_w" -lt 9 ] && win_w=9
+    [ "$win_w" -gt 18 ] && win_w=18
 
-    while IFS='|' read -r pane win slug branch state ctx cost path hash; do
-      [ -n "$slug" ] || continue
-      live="$live$slug "
+    while IFS='|' read -r pane win slug branch state ctx cost path hash curmodel recmodel age cold; do
+      [ -n "$pane" ] || continue
+      local key="${slug:-$pane}" subj="${slug:-$win}"
+      label_of[$key]="$subj"
+      live="$live$key "
 
-      if [ -z "${seen[$slug]:-}" ]; then
-        seen[$slug]=1; since[$slug]=$now; st[$slug]="$state"
-        [ "$n" -gt 0 ] && plog "$slug" window-opened "$win"
+      if [ -z "${seen[$key]:-}" ]; then
+        seen[$key]=1; since[$key]=$now; st[$key]="$state"
+        [ "$n" -gt 0 ] && plog "$subj" window-opened "$win"
       fi
-      if [ "${st[$slug]}" != "$state" ]; then
-        st[$slug]="$state"; since[$slug]=$now
-        if [ "$state" = input ]; then plog "$slug" needs-input "$win"
-        else plog "$slug" state "$state"; fi
+      if [ "${st[$key]}" != "$state" ]; then
+        st[$key]="$state"; since[$key]=$now
+        if [ "$state" = input ]; then plog "$subj" needs-input "$win"
+        else plog "$subj" state "$state"; fi
       fi
-      if [ -n "$branch" ] && [ "${br_of[$slug]:-$branch}" != "$branch" ]; then
-        plog "$slug" branch "$branch"
+      if [ -n "$branch" ] && [ "${br_of[$key]:-$branch}" != "$branch" ]; then
+        plog "$subj" branch "$branch"
       fi
-      br_of[$slug]="$branch"
+      br_of[$key]="$branch"
+
+      local drift="no"
+      if [ -n "$recmodel" ]; then
+        [ "$curmodel" = "$recmodel" ] || drift="$curmodel≠$recmodel"
+        if [ "${modeldrift_of[$key]:-$drift}" != "$drift" ] && [ "$drift" != "no" ]; then
+          plog "$subj" model-drift "$drift"
+        fi
+        modeldrift_of[$key]="$drift"
+      fi
 
       local f="$TODOS/$slug/TODO.md" m
       if [ -f "$f" ]; then
         m="$(stat -f %m "$f")"
-        [ -n "${mt_of[$slug]:-}" ] && [ "$m" != "${mt_of[$slug]}" ] && plog "$slug" todo-updated ""
-        mt_of[$slug]="$m"
+        [ -n "${mt_of[$key]:-}" ] && [ "$m" != "${mt_of[$key]}" ] && plog "$subj" todo-updated ""
+        mt_of[$key]="$m"
       fi
 
       if [ $((n % gitevery)) -eq 0 ] && [ -n "$path" ]; then
         local h
         h="$(git -C "$path" rev-parse --short HEAD 2>/dev/null)"
         if [ -n "$h" ]; then
-          if [ -n "${head_of[$slug]:-}" ] && [ "$h" != "${head_of[$slug]}" ]; then
-            plog "$slug" commit "$h $(git -C "$path" log -1 --pretty=%s 2>/dev/null | cut -c1-60)"
+          if [ -n "${head_of[$key]:-}" ] && [ "$h" != "${head_of[$key]}" ]; then
+            plog "$subj" commit "$h $(git -C "$path" log -1 --pretty=%s 2>/dev/null | cut -c1-60)"
           fi
-          head_of[$slug]="$h"
+          head_of[$key]="$h"
         fi
       fi
 
@@ -485,23 +687,79 @@ cmd_watch() {
         input)   glyph='▲'; colour="$C_YEL"; label='needs you' ;;
         *)       glyph='◌'; colour="$C_DIM"; label='idle' ;;
       esac
-      rows="$rows$(printf ' %s%s%s %-9.9s %-31.31s %-10s %5s %9s %5s\n' \
-        "$colour" "$glyph" "$C_RESET" "$win" "$slug" "$label" "$ctx" "$cost" \
-        "$(ago $((now - ${since[$slug]})))")"$'\n'
+      local modeltxt modelcolour
+      if [ -z "$recmodel" ]; then modeltxt="$curmodel"; modelcolour="$C_DIM"
+      elif [ "$curmodel" = "$recmodel" ]; then modeltxt="$curmodel"; modelcolour="$C_DIM"
+      else modeltxt="$curmodel≠$recmodel"; modelcolour="$C_YEL"; fi
+
+      # session age: hygiene signal (recycle the window), not a cost signal
+      local agemin=0 agecolour="$C_DIM" agetxt="$age"
+      case "$age" in
+        *h*) agemin=$(( ${age%%h*} * 60 + 10#$(printf '%s' "${age#*h}" | tr -dc '0-9' || echo 0) )) ;;
+        *m)  agemin=$(( 10#$(printf '%s' "${age%m}" | tr -dc '0-9') )) ;;
+      esac
+      if   [ "$agemin" -ge 60 ]; then agecolour="$C_RED"; agetxt="$age!"
+      elif [ "$agemin" -ge 45 ]; then agecolour="$C_YEL"; fi
+      if [ "$agemin" -ge 60 ] && [ "${agedflag_of[$key]:-}" != "1" ]; then
+        plog "$subj" session-old "$age"; agedflag_of[$key]=1
+      fi
+      # cold cache: the actual money. Shown in place of age colour when it is live.
+      [ -n "$cold" ] && { agecolour="$C_YEL"; agetxt="$age ❄$cold"; }
+
+      local todofield
+      if [ -n "$slug" ]; then
+        todofield="$(printf '%-*.*s' "$slug_w" "$slug_w" "$slug")"
+      else
+        todofield="$(printf '%-*s' "$slug_w" "")"
+      fi
+
+      local row
+      row="$(printf ' %s%s%s %-*.*s %s %-10s %s%-13.13s%s %5s %9s %s%-13.13s%s %5s\n' \
+        "$colour" "$glyph" "$C_RESET" "$win_w" "$win_w" "$win" "$todofield" "$label" \
+        "$modelcolour" "$modeltxt" "$C_RESET" "$ctx" "$cost" \
+        "$agecolour" "$agetxt" "$C_RESET" \
+        "$(ago $((now - ${since[$key]})))")"$'\n'
+
+      local winid; winid="$("$TMUX_CMD" display-message -p -t "$pane" '#{window_id}' 2>/dev/null)"
+      if [ -n "$slug" ]; then
+        rows_bound="$rows_bound$row"
+        map_pane_b+=("$pane"); map_win_b+=("$winid"); map_slug_b+=("$slug")
+      else
+        rows_unbound="$rows_unbound$row"
+        map_pane_u+=("$pane"); map_win_u+=("$winid"); map_slug_u+=("$win")
+      fi
     done < <(pulse_scan)
 
-    for slug in "${!seen[@]}"; do
-      case "$live" in *" $slug "*) ;; *) plog "$slug" window-closed ""; unset "seen[$slug]" "st[$slug]" ;; esac
+    rows="$rows_bound$rows_unbound"
+    local -a map_pane=("${map_pane_b[@]}" "${map_pane_u[@]}")
+    local -a map_win=("${map_win_b[@]}" "${map_win_u[@]}")
+    local -a map_slug=("${map_slug_b[@]}" "${map_slug_u[@]}")
+
+    for key in "${!seen[@]}"; do
+      case "$live" in
+        *" $key "*) ;;
+        *) plog "${label_of[$key]:-$key}" window-closed ""; unset "seen[$key]" "st[$key]" "label_of[$key]" ;;
+      esac
     done
 
     local blocked=0 b
     for b in "${!st[@]}"; do [ "${st[$b]}" = input ] && blocked=$((blocked+1)); done
 
+    local before_rows=2
+    [ "$blocked" -gt 0 ] && before_rows=3
+    local mapfile="$TODOS/.pulse-map" tmpmap i
+    tmpmap="$(mktemp "$TODOS/.pulse-map.XXXXXX" 2>/dev/null)" && {
+      for i in "${!map_slug[@]}"; do
+        printf '%d\t%s\t%s\t%s\n' "$((before_rows + 1 + i))" "${map_win[$i]}" "${map_pane[$i]}" "${map_slug[$i]}"
+      done > "$tmpmap"
+      mv "$tmpmap" "$mapfile"
+    }
+
     printf '\033[H\033[J'
     printf '%s╭ PULSE %s %s\n' "$C_CYN" "$(printf '─%.0s' $(seq 1 $((cols > 26 ? cols - 20 : 6))))" "$(date +%H:%M:%S)$C_RESET"
     [ "$blocked" -gt 0 ] && printf '%s  ▲ %d window%s waiting on you%s\n' \
       "$C_YEL$C_BOLD" "$blocked" "$([ "$blocked" -gt 1 ] && echo s)" "$C_RESET"
-    printf '%s   %-9s %-31s %-10s %5s %9s %5s%s\n' "$C_DIM" WINDOW TODO STATE CTX COST FOR "$C_RESET"
+    printf '%s   %-*s %-*s %-10s %-13s %5s %9s %-13s %5s%s\n' "$C_DIM" "$win_w" WINDOW "$slug_w" TODO STATE MODEL CTX COST AGE FOR "$C_RESET"
     if [ -n "$rows" ]; then printf '%s' "$rows"; else printf '%s  no claude window is bound to a todo yet%s\n' "$C_DIM" "$C_RESET"; fi
 
     printf '\n%s  RECENT%s\n' "$C_DIM" "$C_RESET"
@@ -537,7 +795,7 @@ cmd_dash() {
   existing="$("$TMUX_CMD" list-panes -F '#{pane_id}|#{@pulse}' 2>/dev/null | awk -F'|' '$2=="1"{print $1; exit}')"
   if [ -n "$existing" ]; then echo "DASH|exists|$existing"; return 0; fi
   local pane
-  pane="$("$TMUX_CMD" split-window -h -l "${1:-38%}" -d -P -F '#{pane_id}' -t "$target" \
+  pane="$("$TMUX_CMD" split-window -v -l "${1:-30%}" -d -P -F '#{pane_id}' -t "$target" \
     -c "$TODOS" "$SELF watch")" || die "split-window failed"
   "$TMUX_CMD" set-option -p -t "$pane" @pulse 1
   "$TMUX_CMD" select-pane -t "$target"
@@ -562,6 +820,7 @@ case "$cmd" in
   dash)     cmd_dash "${1:-}" ;;
   list)    cmd_list ;;
   open)    cmd_open "$@" ;;
+  winddown) cmd_winddown "$@" ;;
   send)    cmd_send "$@" ;;
   close)   cmd_close "$@" ;;
   *) die "unknown command: $cmd" ;;

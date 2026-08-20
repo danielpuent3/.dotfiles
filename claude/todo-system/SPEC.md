@@ -42,6 +42,7 @@ type: task              # task | project | support-ticket
 group: []               # ad-hoc grouping slugs, e.g. ["q3-billing-cleanup"]
 status: next            # now | next | doing | waiting | blocked | done | cancelled
 priority: normal        # low | normal | high | urgent
+model: opus             # opus | sonnet | haiku
 owner: Your Name
 requester: null
 project_directory: /absolute/path/to/repo
@@ -115,6 +116,31 @@ grep -l 'group:.*"the-slug"' ~/.ai/todos/*/TODO.md
 ### Priority values
 
 `low` · `normal` · `high` · `urgent`
+
+### model
+
+`opus` · `sonnet` · `haiku`. Nothing else is valid — `fable` is explicitly not
+usable here, don't add it.
+
+Required for new todos. When it's missing on an older todo, fall back to `opus`.
+
+This is the model the todo's Claude session launches in. `orch.sh open` reads
+it and passes it straight to `claude --model`, so it's binding, not advisory.
+
+| Value | Use when |
+|---|---|
+| `opus` | The approach isn't known yet. Open-ended investigation, planning and architecture, ambiguous requirements, security-sensitive work, anything with real blast radius, anything where the first task is working out what the task actually is. |
+| `sonnet` | The approach is already worked out. This is the common case when the orchestrator has already solved the problem before spawning the session and the brief is a concrete recipe, not a question. Also well-scoped implementation against a known pattern, mechanical refactors, review passes against explicit criteria. |
+| `haiku` | Genuinely simple mechanical work only. Single-file text edits, renames, tidying an INDEX line, reformatting. No multi-file reasoning, no debugging, no judgment calls. |
+
+Pick the model at creation, but revisit it when the handoff brief gets
+written. If the brief has turned into a complete recipe with the solution
+already worked out, the session doesn't need opus to follow it — downgrade
+it to `sonnet`.
+
+A todo can be re-pointed at a different model later by editing the field. A
+session already running doesn't pick up the change — it keeps the model it
+launched with.
 
 ---
 

@@ -25,6 +25,8 @@ for a routine standup.
 4. **Stay short.** This window is a control panel. Answers are the board, a
    recommendation, and a command. Detail belongs in the todo's own window.
 5. One window per todo. Check before opening a second.
+6. **Clear this window yourself when it's flagged old.** No need to ask — see
+   "Recycling this window".
 
 ## The helper
 
@@ -38,11 +40,11 @@ All output is `KEY|field|field` lines, cheap to parse.
 | Command | What it gives you |
 |---|---|
 | `standup [YYYY-MM-DD]` | everything below in one call; defaults to since-yesterday, Monday reaches back to Friday |
-| `board` | `INDEX\|section\|line`, `TODO\|slug\|status\|priority\|type\|created\|mtime\|branches\|prs`, plus `ORPHAN`/`GHOST` drift |
+| `board` | `INDEX\|section\|line`, `TODO\|slug\|status\|priority\|type\|created\|mtime\|branches\|prs\|model`, plus `ORPHAN`/`GHOST` drift |
 | `notes [since]` | `NOTE\|slug\|date\|line` — dated note lines, capped per heading |
 | `git [since]` | `GIT\|repo\|date\|sha\|subject` across every repo named by a `project_directory` |
 | `windows` | `WINDOW\|id\|index\|name\|todo-slug\|path\|panes\|active` and `BOUND\|slug\|age\|cwd` |
-| `dash` | split a pulse pane to the right of this one, idempotent |
+| `dash` | split a pulse pane to the bottom of this one, idempotent |
 | `watch` | the pulse loop itself — runs in that pane, not something you call |
 | `pulse [since\|--all]` | replay what the watched windows actually did |
 | `popup` | fzf picker in a tmux popup, backgrounded — the user drives it, you spend nothing |
@@ -50,7 +52,8 @@ All output is `KEY|field|field` lines, cheap to parse.
 | `preview <slug>` | the card fzf renders in its preview pane |
 | `show <slug>` | frontmatter + section outline + attachments, no body |
 | `list` | every active slug |
-| `open <slug> [--name X] [--prompt X] [--switch] [--force] [--dir X]` | new tmux window, cd'd to `project_directory`, running `claude` pre-bound to the todo |
+| `winddown [ask\|status\|close]` | end-of-day sweep: ask every live window to write itself up, then close them |
+| `open <slug> [--name X] [--prompt X] [--switch] [--force] [--dir X] [--model opus\|sonnet\|haiku]` | new tmux window, cd'd to `project_directory`, running `claude` pre-bound to the todo, launched in the todo's `model` |
 | `send <slug> <text>` | type text into that todo's window and press enter |
 | `close <slug>` | kill that todo's window |
 
@@ -65,7 +68,7 @@ One bash call, nothing else:
 $ORCH dash && $ORCH standup
 ```
 
-`dash` splits the pulse pane to the right of this one and returns instantly; it
+`dash` splits the pulse pane to the bottom of this one and returns instantly; it
 no-ops if the pane is already up. `standup` returns the digest. Then render:
 
 1. **Header box.** Date, weekday, count of active items.
@@ -166,6 +169,7 @@ alone; `description` is the reason in under a dozen words. Give every option a
 
 ```
 <slug>                          <status> · <priority>
+model    <opus|sonnet|haiku, or opus if unset>
 repo     <basename of project_directory>
 branch   <branches, or none>
 pr       <pr numbers, or none>
@@ -193,10 +197,28 @@ wake re-reads it at full price. If something genuinely needs interrupting the
 user, that's a `PushNotification`, not a stream.
 
 Events: `window-opened`, `window-closed`, `needs-input`, `todo-updated`,
-`commit`, `branch`, and `state` (filtered out of `pulse` unless `--all`).
+`commit`, `branch`, `session-old`, and `state` (filtered out of `pulse` unless
+`--all`).
 
 Detection is a heuristic over rendered text. If a window looks wrong in the
 pane, say so plainly rather than reasoning from it.
+
+## Recycling this window
+
+The statusline flags a long-running session (`⏱` turning red at 60m, `session-old`
+in the pulse log, or any recycle warning the harness prints). When this window is
+the one flagged, you have standing permission to run `/clear` on it without asking.
+
+The orchestrator holds no state worth keeping: the board comes from `$ORCH standup`,
+the todos live on disk, and the work lives in the per-todo windows. Carrying a stale
+context forward only makes every later turn cost more.
+
+Say one line before you clear, then clear and re-run the standup. Don't debate it,
+don't ask permission, and don't ask the user to confirm afterwards.
+
+Two things this does not cover. A recycle warning about some *other* window is that
+window's business — mention it in **Attention** and leave it alone. And if the user
+asked something mid-flight that you haven't answered yet, answer first, then clear.
 
 ## Picking what to start
 
@@ -209,20 +231,113 @@ and age. Say the reason in one clause. Don't rank the whole queue.
 ## Opening a window
 
 ```bash
-$ORCH open <slug> --name <short-label>
+$ORCH open <slug>
 ```
 
-`--name` should be a short label that fits the tmux status bar (existing ones are
-`core`, `charity`, `slid`, `sentry`), not the full slug. Default handoff prompt binds
-the session, reads the TODO, checks the branch, and reports back without touching
-anything. Override with `--prompt` when you want the window to start somewhere
+Don't pass `--name`. The window name is derived from the repo — see **Window names**
+below — and a hand-typed one breaks the convention that makes the status bar
+scannable. Default handoff prompt binds the session, reads the TODO, checks the
+branch, and reports back without touching anything. Override with `--prompt` when you want the window to start somewhere
 specific — a resumed step, a question to answer, a rebase to run.
+
+`open` launches the session in the todo's `model` frontmatter field. Valid values
+are `opus`, `sonnet`, `haiku`; `fable` is forbidden. A missing field falls back to
+`opus`. Pass `--model X` to override for this one launch without touching the
+frontmatter.
 
 Write the prompt as a self-contained brief. The new session sees none of this
 conversation: name the goal, the paths, the constraint, and what done looks like.
 
 Report back the window index so the user can jump to it, and don't switch focus
 unless they asked (`--switch`).
+
+If you open a bound pane by hand instead of through `open` (`split-window` plus a
+pre-registered `.sessions/<uuid>` file), pass `--model` on the `claude` invocation
+yourself. You're bypassing `cmd_open`, so nothing validates or defaults it for you.
+
+## Window names
+
+Names are `<repo-alias>/<hint>`, derived by `open` so the repo is always the first
+thing you read in the status bar: `charity/signup`, `slid-api/parity`,
+`stripe/breach`. The alias comes from a table in `repo_alias()` keyed on the
+`project_directory` basename (`streamlabs-identity-api` → `slid-api`,
+`streamlabs.com` → `core`, `charity-laravel` → `charity`); anything unlisted falls
+back to the basename with `streamlabs-`, `-laravel` and `.com` trimmed. The hint is
+the first slug token the alias does not already carry.
+
+Two todos in one repo can still derive the same hint (`zevent-2026-event-prep` and
+`zevent-2026-go-live-gates` both give `charity/zevent`). `open` appends `2`, `3` to
+keep tmux unambiguous, but that is a fallback, not a name — a `charity/zevent2`
+tells you nothing. When you create a todo whose hint collides with an existing one,
+set an explicit `window:` field in its frontmatter and pick something that reads.
+`window:` always wins over the derivation.
+
+Add a new repo to `repo_alias()` rather than passing `--name` every time. `--name`
+stays for one-off overrides.
+
+## Winding down the day
+
+`winddown` replaces walking window to window asking each session to update its todo.
+Run it when the user calls the day, so the next morning starts from the files.
+
+```bash
+$ORCH winddown ask
+```
+
+Every live window bound to a todo gets a written-up-before-close prompt: dated note,
+frontmatter corrections, `Task`/`Context`/`Plan` edits, a `## Handoff` section with
+the next action, and an explicit call-out of anything uncommitted, unpushed, or
+parked in a worktree or stash. It records each `TODO.md` mtime first, so "did this
+window actually write anything" is a fact rather than a guess.
+
+Three kinds of line come back:
+
+- `asked` — prompt delivered, now writing.
+- `unbound` — a live claude window with no todo. **This is the one that needs you.**
+  Decide whether it was a one-off ask (close it, nothing to keep) or real work that
+  never got a todo (create one, then let it write itself up). Ask the user when the
+  window's cwd and recent output don't settle it; don't guess and don't close it.
+- `stale` — a window carrying a `@todo` tag with no claude running. Nothing to ask,
+  safe to close.
+
+Then poll, don't block:
+
+```bash
+$ORCH winddown status    # updated / pending per todo
+$ORCH winddown close     # closes only what actually wrote itself up
+```
+
+`close` keeps anything still `pending` and says so. Re-run `status` and give the
+slow ones another minute before reaching for `close --all`, which closes pending
+windows too and throws their context away. Only use it when the user says to.
+
+Report the sweep as a short list — who wrote up, who didn't, what the unbound
+windows were — and stop. Don't summarise what each session wrote; that's what the
+files are for.
+
+## Choosing a model
+
+You pick the model when you create a todo, since it decides what kind of session
+the window will run. Write it into the `model` frontmatter field.
+
+- **opus** when the approach isn't known yet: open-ended investigation, planning
+  and architecture, ambiguous requirements, security-sensitive work, real blast
+  radius, anything where the first job is working out what the job is.
+- **sonnet** when the approach is already worked out. This is the common case.
+  You often solve the problem before you ever spawn the tab, and when the brief is
+  a concrete recipe rather than a question, the session is following instructions,
+  not deriving them. Also fits well-scoped implementation against a known pattern,
+  mechanical refactors, and review passes against explicit criteria.
+- **haiku** for genuinely simple mechanical work only: single-file text edits,
+  renames, tidying an INDEX line, reformatting. No multi-file reasoning, no
+  debugging.
+- **never fable.**
+
+The model is picked at creation time, but you write the handoff brief later, right
+before opening the window. If by then the brief has become a complete recipe with
+the solution already spelled out, downgrade the todo to `sonnet` before opening it.
+Update the frontmatter field itself, not just the `--model` flag for that one
+launch — the todo should carry the right value going forward, not just this open.
 
 ## Subagents
 

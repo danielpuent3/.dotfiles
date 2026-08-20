@@ -5,6 +5,7 @@ type: task # task | project | support-ticket
 group: []
 status: next
 priority: normal
+model: opus # opus | sonnet | haiku
 owner: Your Name
 requester: null
 project_directory: /absolute/path/to/repo

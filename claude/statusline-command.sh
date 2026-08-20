@@ -166,6 +166,88 @@ if [ "$rl_int" -ge 50 ]; then
   fi
 fi
 
+# --- session age (window hygiene) and cold-cache cost (the real money) ---
+#
+# Idle time is free: tokens only move on a turn. What costs is the FIRST turn after a
+# gap. Past ~5 min the prompt cache expires and that turn rebuilds the whole context.
+# Measured over this machine's transcripts: $0.16/turn warm vs $3.64/turn cold.
+# So age is shown as hygiene, and staleness is shown as money.
+age_seg=""
+cold_seg=""
+if [ -n "$session_id" ]; then
+  tfile=$(ls "$HOME"/.claude/projects/*/"$session_id".jsonl 2>/dev/null | head -1)
+  if [ -n "$tfile" ]; then
+    now_s=$(date +%s)
+    birth=$(stat -f %B "$tfile" 2>/dev/null)
+    last=$(stat -f %m "$tfile" 2>/dev/null)
+
+    if [ -n "$birth" ]; then
+      age_m=$(( (now_s - birth) / 60 ))
+      [ "$age_m" -lt 0 ] && age_m=0
+      if [ "$age_m" -lt 60 ]; then
+        age_txt="${age_m}m"
+      else
+        age_txt=$(printf '%dh%02dm' $((age_m / 60)) $((age_m % 60)))
+      fi
+      if [ "$age_m" -ge 60 ]; then
+        age_seg="${C_RED}⏱ ${age_txt} recycle${C_RESET}"
+      elif [ "$age_m" -ge 45 ]; then
+        age_seg="${C_YELLOW}⏱ ${age_txt}${C_RESET}"
+      else
+        age_seg="${C_DIM}⏱ ${age_txt}${C_RESET}"
+      fi
+    fi
+
+    # cold cache: what the next message costs to rebuild context
+    if [ -n "$last" ]; then
+      idle_s=$((now_s - last))
+      if [ "$idle_s" -ge 300 ] && [ -n "$used" ] && [ -n "$context_size" ]; then
+        if [ "$idle_s" -lt 3600 ]; then
+          idle_txt="$((idle_s / 60))m"
+        else
+          idle_txt="$((idle_s / 3600))h"
+        fi
+        # cache-write rate per token, by model tier
+        case "$(printf '%s' "$model" | tr 'A-Z' 'a-z')" in
+          *haiku*)  rate=1.25 ;;
+          *sonnet*) [ "$context_size" = "1000000" ] && rate=7.50 || rate=3.75 ;;
+          *)        [ "$context_size" = "1000000" ] && rate=28.125 || rate=18.75 ;;
+        esac
+        resume=$(awk -v u="$used" -v c="$context_size" -v r="$rate" \
+          'BEGIN { printf "%.2f", (u/100.0) * c * r / 1000000.0 }' 2>/dev/null)
+        if [ -n "$resume" ]; then
+          case "$resume" in
+            0.0*|0.1*|0.2*) cold_seg="${C_DIM}❄ ${idle_txt}${C_RESET}" ;;
+            *)              cold_seg="${C_YELLOW}❄ ${idle_txt} ~\$${resume} to resume${C_RESET}" ;;
+          esac
+        fi
+      fi
+    fi
+  fi
+fi
+
+# --- recommended vs active model ---
+# Recommendation comes from the bound todo's `model:` frontmatter, else the configured default.
+norm_model() {
+  case "$(printf '%s' "$1" | tr 'A-Z' 'a-z')" in
+    *haiku*)  echo haiku ;;
+    *sonnet*) echo sonnet ;;
+    *opus*)   echo opus ;;
+    *)        echo "" ;;
+  esac
+}
+rec_raw=""
+if [ -n "$todo_slug" ] && [ -f "$HOME/.ai/todos/$todo_slug/TODO.md" ]; then
+  rec_raw=$(sed -n '1,30p' "$HOME/.ai/todos/$todo_slug/TODO.md" | sed -n 's/^model: *//p' | head -1)
+fi
+[ -n "$rec_raw" ] || rec_raw=$(jq -r '.model // ""' "$HOME/.claude/settings.json" 2>/dev/null)
+rec_model=$(norm_model "$rec_raw")
+cur_model=$(norm_model "$model")
+drift=""
+if [ -n "$rec_model" ] && [ -n "$cur_model" ] && [ "$rec_model" != "$cur_model" ]; then
+  drift="${C_YELLOW}${cur_model}≠${rec_model}${C_RESET}"
+fi
+
 # --- PR badge ---
 pr_seg=""
 if [ -n "$pr_num" ]; then
@@ -213,12 +295,16 @@ fi
 
 [ -n "$cost_str" ] && append "${C_YELLOW}${cost_str}${C_RESET}"
 
+model_render="${C_BLUE}${model}${C_RESET}"
+[ -n "$drift" ] && model_render="${model_render} ${drift}"
 if [ -n "$bar" ]; then
-  append "${C_BLUE}${model}${C_RESET}  ${bar}"
+  append "${model_render}  ${bar}"
 else
-  append "${C_BLUE}${model}${C_RESET}"
+  append "${model_render}"
 fi
 
 append "$rl_seg"
+append "$age_seg"
+append "$cold_seg"
 
 printf "%b" "$out"

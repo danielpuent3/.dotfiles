@@ -57,38 +57,85 @@ slug="$("$TODO_SESSION" get --session-id "$session_id" 2>/dev/null)"
 todo_file="$TODOS_DIR/$slug/TODO.md"
 [ -f "$todo_file" ] || out ""
 
-# --- condition 2: does the todo list branches for the repo this pane is in? ---
-remote_url="$(git -C "$pane_cwd" remote get-url origin 2>/dev/null)"
-[ -n "$remote_url" ] || out ""
-url="${remote_url%.git}"
-url="${url//:/\/}"
-IFS='/' read -ra url_parts <<< "$url"
-n="${#url_parts[@]}"
-[ "$n" -ge 2 ] || out ""
-cur_nwo="${url_parts[$((n - 2))]}/${url_parts[$((n - 1))]}"
-
-cur_branch="$(git -C "$pane_cwd" symbolic-ref --short HEAD 2>/dev/null)"
-[ -n "$cur_branch" ] || out ""
-
-# frontmatter only, and only the flow-style `branches: ["a/b:c", ...]` form
+# frontmatter only, shared by the branch check and the model check below
 frontmatter="$(awk '/^---$/{c++; next} c==1' "$todo_file")"
-branches_line="$(printf '%s\n' "$frontmatter" | grep '^branches:' | head -1)"
-inner="$(printf '%s' "$branches_line" | sed -n 's/^branches: *\[\(.*\)\]/\1/p')"
-[ -n "$inner" ] || out ""
 
-expected_branch=""
-matched_repo=0
-IFS=',' read -ra entries <<< "$inner"
-for entry in "${entries[@]}"; do
-    entry="$(printf '%s' "$entry" | sed -E 's/^[[:space:]]*"?//; s/"?[[:space:]]*$//')"
-    repo="${entry%%:*}"
-    branch="${entry#*:}"
-    [ "$repo" = "$cur_nwo" ] || continue
-    matched_repo=1
-    [ "$branch" = "$cur_branch" ] && out ""   # on an expected branch, all quiet
-    expected_branch="$branch"
-done
+branch_alert=""
+model_alert=""
 
-[ "$matched_repo" -eq 1 ] || out ""   # this repo isn't one the todo tracks
+# --- condition 2: does the todo list branches for the repo this pane is in? ---
+check_branch() {
+    local remote_url url url_parts n cur_nwo cur_branch
+    local branches_line inner expected_branch matched_repo entries entry repo branch
 
-out "#[fg=$C_RED,bold]⚠ WRONG BRANCH#[fg=$C_DIM,nobold] → ${expected_branch}#[default]"
+    remote_url="$(git -C "$pane_cwd" remote get-url origin 2>/dev/null)"
+    [ -n "$remote_url" ] || return
+    url="${remote_url%.git}"
+    url="${url//:/\/}"
+    IFS='/' read -ra url_parts <<< "$url"
+    n="${#url_parts[@]}"
+    [ "$n" -ge 2 ] || return
+    cur_nwo="${url_parts[$((n - 2))]}/${url_parts[$((n - 1))]}"
+
+    cur_branch="$(git -C "$pane_cwd" symbolic-ref --short HEAD 2>/dev/null)"
+    [ -n "$cur_branch" ] || return
+
+    # only the flow-style `branches: ["a/b:c", ...]` form
+    branches_line="$(printf '%s\n' "$frontmatter" | grep '^branches:' | head -1)"
+    inner="$(printf '%s' "$branches_line" | sed -n 's/^branches: *\[\(.*\)\]/\1/p')"
+    [ -n "$inner" ] || return
+
+    expected_branch=""
+    matched_repo=0
+    IFS=',' read -ra entries <<< "$inner"
+    for entry in "${entries[@]}"; do
+        entry="$(printf '%s' "$entry" | sed -E 's/^[[:space:]]*"?//; s/"?[[:space:]]*$//')"
+        repo="${entry%%:*}"
+        branch="${entry#*:}"
+        [ "$repo" = "$cur_nwo" ] || continue
+        matched_repo=1
+        [ "$branch" = "$cur_branch" ] && return   # on an expected branch, all quiet
+        expected_branch="$branch"
+    done
+
+    [ "$matched_repo" -eq 1 ] || return   # this repo isn't one the todo tracks
+
+    branch_alert="#[fg=$C_RED,bold]⚠ WRONG BRANCH#[fg=$C_DIM,nobold] → ${expected_branch}#[default]"
+}
+check_branch
+
+# --- condition 3: has the live session drifted off the todo's recommended model? ---
+check_model() {
+    local recommended running raw pane_id helper cmd_pid watchdog_pid
+
+    recommended="$(printf '%s\n' "$frontmatter" | grep '^model:' | head -1 | sed -E 's/^model: *"?//; s/"?[[:space:]]*$//')"
+    [ -n "$recommended" ] || recommended="opus"
+
+    helper="${PANE_MODEL_BIN:-$HOME/.dotfiles/claude/todo-system/bin/pane-model.sh}"
+    [ -x "$helper" ] || return
+    pane_id="${pane_target##*.}"
+
+    raw="$(set -m
+        "$helper" "$pane_id" 2>/dev/null & cmd_pid=$!
+        ( sleep 1; kill -TERM -- "-$cmd_pid" 2>/dev/null ) >/dev/null 2>&1 & watchdog_pid=$!
+        wait "$cmd_pid" 2>/dev/null
+        kill "$watchdog_pid" 2>/dev/null
+        wait "$watchdog_pid" 2>/dev/null)"
+
+    case "$raw" in
+        opus|sonnet|haiku) running="$raw" ;;
+        *) return ;;   # unknown isn't drift
+    esac
+
+    [ "$running" = "$recommended" ] && return
+
+    model_alert="#[fg=$C_RED,bold]⚡${running}≠${recommended}#[default]"
+}
+check_model
+
+segments=()
+[ -n "$branch_alert" ] && segments+=("$branch_alert")
+[ -n "$model_alert" ] && segments+=("$model_alert")
+[ "${#segments[@]}" -gt 0 ] || out ""
+
+out "${segments[*]}"
