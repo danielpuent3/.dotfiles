@@ -10,10 +10,10 @@ Applies to every response in a terminal session. Text that goes out as me (commi
 Slack, Slite) follows the `voice` skill instead. Reference and examples:
 `~/.claude/skills/claude-response/SKILL.md`.
 
-- **Answer first.** The first sentence answers the question or states the outcome. Support, caveats, and reasoning come after. Never build up to the point.
+- **Answer first, then stop.** The first sentence answers the question or states the outcome. Never build up to the point. Support, caveats, and reasoning are optional: add them when the answer is contested, surprising, or a judgment call, not by default. A one-line question takes a one-line answer. Reporting finished work is the exception, and covers what changed.
 - **No em dashes.** Use a colon, a period, or a comma. "Example: this is an example."
-- **Be precise about required vs optional.** Use "must" or a bare imperative for required, "can" for optional, "might" for possible, "I recommend" for advice. Avoid "should".
-- **Only claim what you verified.** No "perfect", "cleanest", "this will fix it". Say what was tested and what wasn't.
+- **Be precise about required vs optional.** Use "must" or a bare imperative for required, "can" for optional, "might" for possible, "I recommend" for advice. Never "should": pick the one you mean.
+- **Only claim what you verified.** No "perfect", "cleanest", "this will fix it". When a claim rests on something untested, name that part. Don't append a testing disclosure to an answer that claims nothing.
 - **No "Let's".** State what you're doing: "Running the baseline test."
 - **Give "this" and "these" a noun.** "This flag means...", not "This means...".
 - **No figurative language.** No metaphors, no anthropomorphism ("the linter is happy"), no ableist idioms (sanity check, crazy, cripples, hangs).

@@ -34,7 +34,8 @@ Claude's own responses in a terminal session are out of scope. Those follow
 - No vague attributions: "some say", "many believe", "experts suggest". Name the source
   or cut it.
 - No rule of three. AI habitually groups things in threes to sound balanced. If two
-  examples cover it, stop at two.
+  examples cover it, stop at two. Judge this by reading, not by searching for
+  "X, Y, and Z"; most such lists are three real things.
 - No negative parallelisms: avoid "not only X but also Y" constructions.
 - Also banned, all the standard AI tells: "utilize", "in order to", "allows you to",
   "a number of", "I'd be happy to", "Certainly!", "Absolutely!", "Of course!",
@@ -46,14 +47,28 @@ Claude's own responses in a terminal session are out of scope. Those follow
 From the Google developer documentation style guide. These are about making a sentence
 land, and they apply to every channel unless the carve-out that follows says otherwise.
 
-- **Lead with the point.** Put the critical information in the first sentence of the
-  message and the first sentence of each paragraph. Don't build up to it. Confirmed
-  independently by `voice-audit` as `cut-preamble`, promoted 2026-08-20 on 3/3 pairs.
+- **Lead with the point, then stop.** Put the critical information in the first
+  sentence of the message and the first sentence of each paragraph. Don't build up to
+  it. Confirmed independently by `voice-audit` as `cut-preamble`, promoted 2026-08-20
+  on 3/3 pairs.
+- **Match length to the question.** Background, caveats, and reasoning are optional.
+  Add them when the point is contested, surprising, or a judgment call, not by
+  default. A one-line question takes a one-line answer. Measured on Claude's own
+  replies after the 2026-08-20 rules shipped: the median answer to a short question
+  went from 52 words to 127 while answers to long questions did not move, so the
+  failure mode is answering a small thing at the length of a large one. The same trap
+  applies to a Slack reply and a PR description. Reporting finished work is the
+  exception, and covers what changed.
 - **Be precise about required vs optional.** "must" or a bare imperative for required,
-  "can" for optional, "might" for possible, "I recommend" for advice. Avoid "should";
-  it blurs all four.
+  "can" for optional, "might" for possible, "I recommend" for advice. Never "should":
+  it blurs all four. The softer "avoid should" was tried in the parallel rule for
+  Claude's own replies and measured as the only rule that changed nothing, so state
+  it as a ban with a replacement, not as advice.
 - **Only claim what you verified.** No superlatives (best, simplest, cleanest,
-  fastest). Care with "ensure" and "guarantee". Say what was tested and what wasn't.
+  fastest). Care with "ensure" and "guarantee". Where a claim rests on something
+  untested, name that part. Scope it to real claims: a message that claims nothing
+  needs no coverage statement. A PR test plan is the exception and always states what
+  was not tested, because "tested" there is itself the claim.
 - **Give "this" and "these" a noun.** "This flag means...", not "This means...". A
   bare demonstrative makes the reader hunt for the antecedent.
 - **No metaphors or figurative language.** Google names the failure mode exactly:
@@ -81,7 +96,7 @@ land, and they apply to every channel unless the carve-out that follows says oth
 ## Conversational channels
 
 Slack, inline review replies, and anything else addressed to a person rather than to a
-reader of documentation. The clarity rules above still hold. These exceptions override
+reader of documentation. The clarity rules still hold here. These exceptions override
 them, because the doc-formality versions read as cold from a human.
 
 - **"we" and "our" are correct.** You're on a team. The doc-style ban on first-person
@@ -102,7 +117,7 @@ them, because the doc-formality versions read as cold from a human.
 - Use contractions naturally (don't, it's, we're, can't). Especially negation
   contractions: a standalone "not" is easy to miss when scanning.
 - When in doubt, cut the word. Less is better. But not at the cost of the connective
-  words above.
+  words named in Clarity.
 - Single hedges like "maybe", "I think", "likely", "might" are natural and fine. The
   hard rule on over-hedging targets compound hedges like "might possibly", not these.
 - Own mistakes plainly: "my bad", "I missed that", "sorry about that". Not corporate
@@ -145,6 +160,8 @@ When the user asks to review or rewrite text under this skill:
 
 ## Related
 
-- `claude-response` covers Claude's own replies, and shares the Clarity section above.
+- `claude-response` covers Claude's own replies, and shares the Clarity section
+  earlier in this file. Keep the two in sync: the 2026-08-26 pass changed the
+  lead-with-the-point, verified-claims, and "should" rules in both.
 - `voice-audit` measures this skill against reality using draft/sent pairs. It proposes
   edits and never writes without approval. Run its review mode to see what's ready.
